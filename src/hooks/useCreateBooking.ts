@@ -14,11 +14,14 @@ export function useCreateBooking() {
     onError: (error, variables) => {
       if (error instanceof BookingConflictError) {
         queryClient.invalidateQueries({ queryKey: ["availability", variables.roomId] });
+        queryClient.invalidateQueries({ queryKey: ["rooms"] });
       }
     },
     onSuccess: (booking) => {
       queryClient.invalidateQueries({ queryKey: ["myBookings"] });
       queryClient.invalidateQueries({ queryKey: ["availability", booking.roomId] });
+      queryClient.invalidateQueries({ queryKey: ["rooms"] });
+      queryClient.invalidateQueries({ queryKey: ["featuredRooms"] });
     },
   });
 }

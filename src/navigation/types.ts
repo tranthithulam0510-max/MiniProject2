@@ -1,7 +1,7 @@
 import { NavigatorScreenParams } from "@react-navigation/native";
 
 export type RoomsStackParamList = {
-  RoomsList: undefined;
+  RoomsList: { query?: string; nonce?: number } | undefined;
   RoomDetail: { roomId: string };
   DatePicker: { roomId: string };
   ConfirmBooking: { roomId: string };

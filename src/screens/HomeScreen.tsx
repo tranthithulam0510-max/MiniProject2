@@ -1,9 +1,12 @@
-import React from "react";
-import { View, Text, ScrollView, StyleSheet, Pressable, Image } from "react-native";
+import React, { useState } from "react";
+import { View, Text, ScrollView, StyleSheet, Pressable, Image, TextInput, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { theme } from "@/theme/theme";
+import { useProfile } from "@/hooks/useProfile";
+import { useFeaturedRooms } from "@/hooks/useRooms";
+import { formatVND } from "@/utils/dateOverlap";
 
 const QUICK_FILTERS = [
   { icon: "bed", label: "Phòng" },
@@ -15,28 +18,53 @@ const QUICK_FILTERS = [
 
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
+  const [search, setSearch] = useState("");
+  const { data: profile } = useProfile();
+  const { data: featured, isLoading: featuredLoading } = useFeaturedRooms();
+  const displayName = profile?.name ?? "";
+
+  function goSearch() {
+    navigation.navigate("RoomsTab", {
+      screen: "RoomsList",
+      params: { query: search.trim(), nonce: Date.now() },
+    });
+  }
+
+  function openRoom(roomId: string) {
+    navigation.navigate("RoomsTab", { screen: "RoomDetail", params: { roomId } });
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.hello}>Xin chào, Thu Lam</Text>
+            <Text style={styles.hello}>Xin chào{displayName ? `, ${displayName}` : ""}</Text>
           </View>
           <View style={styles.avatar}>
-            <Text style={{ color: theme.colors.bg, fontWeight: "700" }}>L</Text>
+            <Text style={{ color: theme.colors.bg, fontWeight: "700" }}>
+              {(displayName[0] ?? "?").toUpperCase()}
+            </Text>
           </View>
         </View>
 
         <Text style={styles.title}>Kỳ nghỉ trong mơ chỉ cách một chạm</Text>
 
-        <Pressable
-          style={styles.searchBar}
-          onPress={() => navigation.navigate("RoomsTab", { screen: "RoomsList" })}
-        >
+        <View style={styles.searchBar}>
           <Ionicons name="search" size={16} color={theme.colors.textFaint} />
-          <Text style={styles.searchPlaceholder}>Bạn muốn đến đâu?</Text>
-        </Pressable>
+          <TextInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Bạn muốn đến đâu?"
+            placeholderTextColor={theme.colors.textFaint}
+            style={styles.searchInput}
+            returnKeyType="search"
+            onSubmitEditing={goSearch}
+          />
+          <Pressable onPress={goSearch} hitSlop={8} accessibilityLabel="Tìm kiếm">
+            <Ionicons name="arrow-forward-circle" size={24} color={theme.colors.primary} />
+          </Pressable>
+        </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 18 }}>
           {QUICK_FILTERS.map((f) => (
@@ -68,26 +96,25 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
-        <View style={styles.featuredRow}>
-          <View style={styles.featuredCard}>
-            <Image
-              source={{ uri: "https://i.pinimg.com/1200x/f4/a3/b3/f4a3b3bb8cee6ec20065084615318c91.jpg" }}
-              style={styles.featuredImg}
-              resizeMode="cover"
-            />
-            <Text style={styles.featuredName}>Deluxe City View</Text>
-            <Text style={styles.featuredPrice}>từ 2.550.000đ</Text>
-          </View>
-          <View style={styles.featuredCard}>
-            <Image
-              source={{ uri: "https://i.pinimg.com/736x/8b/eb/20/8beb20f3e625c1d7888dba7a0e6cbb8c.jpg" }}
-              style={styles.featuredImg}
-              resizeMode="cover"
-            />
-            <Text style={styles.featuredName}>Royal Navy Suite</Text>
-            <Text style={styles.featuredPrice}>từ 4.200.000đ</Text>
-          </View>
-        </View>
+        {featuredLoading ? (
+          <ActivityIndicator color={theme.colors.primary} style={{ marginTop: 16 }} />
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.featuredRow}>
+            {(featured ?? []).map((room) => (
+              <Pressable key={room.id} style={styles.featuredCard} onPress={() => openRoom(room.id)}>
+                <View style={[styles.featuredImgWrap, { backgroundColor: room.imageColor }]}>
+                  <Image source={{ uri: room.imageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                  <View style={[styles.statusBadge, { backgroundColor: theme.colors.success }]}>
+                    <Text style={styles.statusText}>Available</Text>
+                  </View>
+                </View>
+                <Text style={styles.featuredName} numberOfLines={1}>{room.name}</Text>
+                <Text style={styles.featuredMeta} numberOfLines={1}>{room.city} · {room.areaM2} m²</Text>
+                <Text style={styles.featuredPrice}>{formatVND(room.pricePerNight)}/đêm</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -119,7 +146,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
     gap: 8,
   },
-  searchPlaceholder: { color: theme.colors.textFaint, fontSize: 13 },
+  searchInput: { flex: 1, color: theme.colors.text, fontSize: 13 },
   quickChip: {
     alignItems: "center",
     justifyContent: "center",
@@ -157,9 +184,12 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { color: theme.colors.text, fontWeight: "700", fontSize: 16 },
   sectionLink: { color: theme.colors.primary, fontSize: 12, fontWeight: "600" },
-  featuredRow: { flexDirection: "row", gap: 12, marginTop: 12 },
-  featuredCard: { flex: 1 },
-  featuredImg: { height: 100, borderRadius: theme.radius.md, marginBottom: 6 },
+  featuredRow: { marginTop: 12 },
+  featuredCard: { width: 160, marginRight: 12 },
+  featuredImgWrap: { height: 100, borderRadius: theme.radius.md, marginBottom: 6, overflow: "hidden" },
+  statusBadge: { position: "absolute", left: 0, right: 0, bottom: 0, paddingVertical: 2, alignItems: "center" },
+  statusText: { color: "#fff", fontSize: 9, fontWeight: "800" },
+  featuredMeta: { color: theme.colors.textMuted, fontSize: 11, marginTop: 1 },
   featuredName: { color: theme.colors.text, fontSize: 12, fontWeight: "600" },
   featuredPrice: { color: theme.colors.primary, fontSize: 12, fontWeight: "700" },
 });

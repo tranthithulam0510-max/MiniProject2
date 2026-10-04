@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { View, Text, TextInput, FlatList, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, TextInput, FlatList, StyleSheet, ActivityIndicator, Pressable, Keyboard } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -8,6 +8,8 @@ import { useFilterStore } from "@/store/filterStore";
 import { useRooms } from "@/hooks/useRooms";
 import RoomCard, { ROOM_CARD_HEIGHT } from "@/components/RoomCard";
 import FilterChip from "@/components/FilterChip";
+import DateRangeModal from "@/components/DateRangeModal";
+import dayjs from "dayjs";
 import { Room } from "@/types/room";
 import { RoomsStackParamList } from "@/navigation/types";
 
@@ -17,19 +19,28 @@ const CARD_MARGIN = 10;
 const ITEM_HEIGHT = ROOM_CARD_HEIGHT + CARD_MARGIN;
 const SEARCH_DEBOUNCE_MS = 350;
 
-export default function RoomsListScreen({ navigation }: Props) {
+export default function RoomsListScreen({ navigation, route }: Props) {
   const {
     query,
     guests,
     maxPrice,
     cityViewOnly,
     poolOnly,
+    areaRange,
+    status,
+    startDate,
+    endDate,
     setQuery,
     toggleGuests,
     toggleMaxPrice,
     toggleCityView,
     togglePool,
+    toggleArea,
+    toggleStatus,
+    setDates,
+    clearAll,
   } = useFilterStore();
+  const [dateModal, setDateModal] = useState(false);
 
   // Local input state kept separate from the store so keystrokes never
   // block on/trigger the (debounced) query re-fetch on every character.
@@ -40,9 +51,25 @@ export default function RoomsListScreen({ navigation }: Props) {
     return () => clearTimeout(handle);
   }, [inputValue, setQuery]);
 
+  // Search typed on the Home screen: apply immediately.
+  const incomingQuery = route.params?.query;
+  const incomingNonce = route.params?.nonce;
+  useEffect(() => {
+    if (incomingQuery !== undefined) {
+      setInputValue(incomingQuery);
+      setQuery(incomingQuery);
+    }
+  }, [incomingQuery, incomingNonce, setQuery]);
+
+  // Pressing the search button / keyboard "search": apply right away.
+  const applySearch = useCallback(() => {
+    setQuery(inputValue.trim());
+    Keyboard.dismiss();
+  }, [inputValue, setQuery]);
+
   const filters = useMemo(
-    () => ({ query, guests, maxPrice, cityViewOnly, poolOnly }),
-    [query, guests, maxPrice, cityViewOnly, poolOnly]
+    () => ({ query, guests, maxPrice, cityViewOnly, poolOnly, areaRange, status, startDate, endDate }),
+    [query, guests, maxPrice, cityViewOnly, poolOnly, areaRange, status, startDate, endDate]
   );
 
   const { data: rooms, isLoading, isError, refetch, isFetching } = useRooms(filters);
@@ -75,7 +102,7 @@ export default function RoomsListScreen({ navigation }: Props) {
       <View style={styles.header}>
         <Text style={styles.title}>Chọn phòng</Text>
         <Text style={styles.subtitle}>
-          Đà Nẵng · {isFetching ? "Đang lọc…" : `${rooms?.length ?? 0} phòng còn lại`}
+          {isFetching ? "Đang lọc…" : `${rooms?.length ?? 0} phòng phù hợp`}
         </Text>
 
         <View style={styles.searchRow}>
@@ -84,14 +111,26 @@ export default function RoomsListScreen({ navigation }: Props) {
             <TextInput
               value={inputValue}
               onChangeText={setInputValue}
-              placeholder="Tìm theo tên phòng…"
+              placeholder="Tìm theo tên phòng, địa điểm…"
               placeholderTextColor={theme.colors.textFaint}
               style={styles.searchInput}
+              returnKeyType="search"
+              onSubmitEditing={applySearch}
             />
+            <Pressable onPress={applySearch} hitSlop={8} accessibilityLabel="Tìm kiếm">
+              <Ionicons name="arrow-forward-circle" size={22} color={theme.colors.primary} />
+            </Pressable>
           </View>
-          <View style={styles.filterBtn}>
-            <Ionicons name="options" size={16} color={theme.colors.text} />
-          </View>
+          <Pressable
+            style={styles.filterBtn}
+            onPress={() => {
+              clearAll();
+              setInputValue("");
+            }}
+            accessibilityLabel="Xoá tất cả bộ lọc"
+          >
+            <Ionicons name="close" size={16} color={theme.colors.text} />
+          </Pressable>
         </View>
 
         <FlatList
@@ -103,6 +142,29 @@ export default function RoomsListScreen({ navigation }: Props) {
             { key: "price10", label: "≤ 10tr", active: maxPrice === 10_000_000, icon: "cash" as const, onPress: () => toggleMaxPrice(10_000_000) },
             { key: "cityview", label: "View thành phố", active: cityViewOnly, icon: "business" as const, onPress: toggleCityView },
             { key: "pool", label: "Hồ bơi", active: poolOnly, icon: "water" as const, onPress: togglePool },
+          ]}
+          keyExtractor={(c) => c.key}
+          renderItem={({ item }) => (
+            <FilterChip label={item.label} active={item.active} icon={item.icon} onPress={item.onPress} />
+          )}
+        />
+        <FlatList
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ marginTop: 8 }}
+          data={[
+            { key: "small", label: "< 30 m²", active: areaRange === "small", icon: "resize" as const, onPress: () => toggleArea("small") },
+            { key: "medium", label: "30–50 m²", active: areaRange === "medium", icon: "resize" as const, onPress: () => toggleArea("medium") },
+            { key: "large", label: "> 50 m²", active: areaRange === "large", icon: "resize" as const, onPress: () => toggleArea("large") },
+            { key: "available", label: "Available", active: status === "available", icon: "checkmark-circle" as const, onPress: () => toggleStatus("available") },
+            { key: "occupied", label: "Occupied", active: status === "occupied", icon: "close-circle" as const, onPress: () => toggleStatus("occupied") },
+            {
+              key: "dates",
+              label: startDate && endDate ? `${dayjs(startDate).format("DD/MM")} – ${dayjs(endDate).format("DD/MM")}` : "Chọn ngày",
+              active: !!(startDate && endDate),
+              icon: "calendar" as const,
+              onPress: () => setDateModal(true),
+            },
           ]}
           keyExtractor={(c) => c.key}
           renderItem={({ item }) => (
@@ -141,6 +203,14 @@ export default function RoomsListScreen({ navigation }: Props) {
           }
         />
       )}
+      <DateRangeModal
+        visible={dateModal}
+        initialStart={startDate}
+        initialEnd={endDate}
+        onApply={(a, b) => setDates(a, b)}
+        onClear={() => setDates(null, null)}
+        onClose={() => setDateModal(false)}
+      />
     </SafeAreaView>
   );
 }

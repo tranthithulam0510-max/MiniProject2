@@ -55,3 +55,23 @@ added to satisfy the requirements table:
   identical on every run — useful for consistent FlatList perf testing.
 - Pricing (breakfast fee, 8% tax) in `ConfirmBookingScreen` is illustrative;
   adjust to match whatever your assignment spec expects.
+
+
+## Cập nhật: SQLite + lọc nâng cao + chống đặt trùng
+
+Chạy lại: `npm install` rồi `npx expo start -c`. Dữ liệu lưu bằng `expo-sqlite` (file `roombooking.db`, tự tạo và seed 520 phòng ở lần chạy đầu). Muốn reset dữ liệu: xoá app khỏi máy/emulator rồi chạy lại.
+
+| Chức năng | Vị trí |
+| --- | --- |
+| Database (users, rooms, bookings + index) | `src/db/database.ts` |
+| Truy vấn, đặt/huỷ phòng, profile | `src/api/mockApi.ts` (giữ tên file cũ, nay chạy trên SQLite) |
+| Lọc: từ khoá (không dấu), khách, giá, view, hồ bơi, diện tích, Available/Occupied, khoảng ngày | `src/store/filterStore.ts`, `RoomsListScreen.tsx`, `DateRangeModal.tsx` |
+| Thẻ phòng: ảnh, tên, location, m², badge Available/Occupied | `RoomCard.tsx` |
+| Trang chủ: tìm kiếm thật + phòng nổi bật từ DB | `HomeScreen.tsx` |
+| Phòng đã đặt (sắp tới / đã qua / đã huỷ, nút huỷ) | `MyBookingsScreen.tsx` |
+| Profile (xem/sửa tên, email, SĐT, thống kê) | `ProfileScreen.tsx` |
+
+### Hai người cùng đặt một phòng
+Ai xác nhận trước thì được (first-commit-wins). Việc kiểm tra trùng ngày và INSERT nằm trong một exclusive transaction (`withExclusiveTransactionAsync`) nên các lần ghi được xếp hàng. Người đến sau thấy booking đã tồn tại và nhận `BookingConflictError` (409) rồi được đưa tới `BookingErrorScreen`. Đặt nối ngày (trả phòng hôm nay, nhận phòng hôm nay) không bị coi là trùng.
+
+Đã bỏ cơ chế giả lập "1/6 lần bị đặt trước" cũ vì giờ xung đột là thật, do database quyết định.

@@ -52,6 +52,8 @@ export default function ConfirmBookingScreen({ route, navigation }: Props) {
           const message =
             error instanceof BookingConflictError
               ? error.message
+              : error instanceof Error && error.message
+              ? error.message
               : "Có lỗi xảy ra, vui lòng thử lại.";
           navigation.replace("BookingError", { roomId: room!.id, message });
         },

@@ -1,18 +1,18 @@
 import { Room, RoomAmenity } from "@/types/room";
 
 const NAMES = [
-  "Deluxe City View",
-  "Royal Navy Suite",
-  "Grey Executive",
-  "Galaxy Sky Suite",
-  "Grand Balcony Suite",
-  "Ocean Breeze Room",
-  "Sunset Garden Villa",
-  "Panorama Loft",
-  "Emerald Family Suite",
-  "Skyline Studio",
-  "Harbor View Room",
-  "Zen Pool Bungalow",
+  "Phòng View Thành Phố",
+  "Phòng Hoàng Gia",
+  "Phòng Điều Hành",
+  "Phòng View Trời Sao",
+  "Phòng Ban Công Lớn",
+  "Phòng Hướng Biển",
+  "Biệt Thự Vườn Hoàng Hôn",
+  "Phòng Gác Lửng Toàn Cảnh",
+  "Phòng Gia Đình Xanh",
+  "Phòng Studio Phố Cổ",
+  "Phòng View Cảng",
+  "Bungalow Hồ Bơi Thư Giãn",
 ];
 
 const CITIES = ["Đà Nẵng", "Hà Nội", "Hồ Chí Minh", "Hội An", "Nha Trang", "Đà Lạt"];
@@ -52,9 +52,11 @@ function mulberry32(seed: number) {
   };
 }
 
-function generateRooms(count: number): Room[] {
+export type SeedRoom = Omit<Room, "status">;
+
+function generateRooms(count: number): SeedRoom[] {
   const rand = mulberry32(42);
-  const rooms: Room[] = [];
+  const rooms: SeedRoom[] = [];
 
   for (let i = 0; i < count; i++) {
     const name = NAMES[Math.floor(rand() * NAMES.length)];
@@ -73,6 +75,8 @@ function generateRooms(count: number): Room[] {
       id: `room-${i + 1}`,
       name: `${name} #${i + 1}`,
       city,
+      // deterministic size (does not touch the PRNG sequence)
+      areaM2: 18 + guests * 8 + ((i * 7) % 15),
       pricePerNight: price,
       rating: Math.round((3.8 + rand() * 1.2) * 10) / 10,
       reviews: Math.floor(20 + rand() * 480),
@@ -91,4 +95,4 @@ function generateRooms(count: number): Room[] {
   return rooms;
 }
 
-export const MOCK_ROOMS: Room[] = generateRooms(520);
+export const MOCK_ROOMS: SeedRoom[] = generateRooms(520);

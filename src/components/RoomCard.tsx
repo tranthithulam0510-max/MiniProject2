@@ -26,6 +26,16 @@ function RoomCardBase({ room, onPress }: Props) {
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
         />
+        <View
+          style={[
+            styles.statusBadge,
+            { backgroundColor: room.status === "available" ? theme.colors.success : theme.colors.danger },
+          ]}
+        >
+          <Text style={styles.statusText}>
+            {room.status === "available" ? "Available" : "Occupied"}
+          </Text>
+        </View>
       </View>
       <View style={styles.info}>
         <View style={styles.titleRow}>
@@ -45,13 +55,9 @@ function RoomCardBase({ room, onPress }: Props) {
           </Text>
         </View>
         <View style={styles.metaRow}>
-          <Ionicons
-            name={room.hasCityView ? "business" : "people"}
-            size={12}
-            color={theme.colors.textMuted}
-          />
-          <Text style={styles.metaText}>
-            {room.hasCityView ? "View thành phố" : `Tối đa ${room.guests} khách`}
+          <Ionicons name="location" size={12} color={theme.colors.textMuted} />
+          <Text style={styles.metaText} numberOfLines={1}>
+            {room.city} · {room.areaM2} m² · {room.guests} khách
           </Text>
         </View>
         <Text style={styles.price}>{formatVND(room.pricePerNight)}/đêm</Text>
@@ -81,6 +87,15 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.sm,
     overflow: "hidden",
   },
+  statusBadge: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingVertical: 2,
+    alignItems: "center",
+  },
+  statusText: { color: "#fff", fontSize: 9, fontWeight: "800" },
   info: {
     flex: 1,
     marginLeft: 12,

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { FilterState } from "@/types/room";
+import { AreaRange, FilterState, RoomStatus } from "@/types/room";
 
 interface FilterStore extends FilterState {
   setQuery: (q: string) => void;
@@ -7,7 +7,11 @@ interface FilterStore extends FilterState {
   toggleMaxPrice: (maxPrice: number) => void;
   toggleCityView: () => void;
   togglePool: () => void;
+  toggleArea: (range: AreaRange) => void;
+  toggleStatus: (status: RoomStatus) => void;
+  setDates: (start: string | null, end: string | null) => void;
   reset: () => void;
+  clearAll: () => void;
 }
 
 const initialState: FilterState = {
@@ -16,6 +20,16 @@ const initialState: FilterState = {
   maxPrice: 10_000_000,
   cityViewOnly: false,
   poolOnly: false,
+  areaRange: null,
+  status: null,
+  startDate: null,
+  endDate: null,
+};
+
+const emptyState: FilterState = {
+  ...initialState,
+  guests: null,
+  maxPrice: null,
 };
 
 export const useFilterStore = create<FilterStore>((set, get) => ({
@@ -27,5 +41,9 @@ export const useFilterStore = create<FilterStore>((set, get) => ({
     set({ maxPrice: get().maxPrice === maxPrice ? null : maxPrice }),
   toggleCityView: () => set({ cityViewOnly: !get().cityViewOnly }),
   togglePool: () => set({ poolOnly: !get().poolOnly }),
+  toggleArea: (range) => set({ areaRange: get().areaRange === range ? null : range }),
+  toggleStatus: (status) => set({ status: get().status === status ? null : status }),
+  setDates: (startDate, endDate) => set({ startDate, endDate }),
   reset: () => set(initialState),
+  clearAll: () => set(emptyState),
 }));

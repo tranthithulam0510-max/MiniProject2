@@ -31,13 +31,13 @@ export default function DatePickerScreen({ route, navigation }: Props) {
   const room = useBookingDraftStore((s) => s.room);
   const setRange = useBookingDraftStore((s) => s.setRange);
 
-  const [month] = useState(() => dayjs("2026-10-01").format("YYYY-MM-DD"));
+  const [month, setMonth] = useState(() => dayjs().startOf("month").format("YYYY-MM-DD"));
   const [start, setStart] = useState<string | null>(null);
   const [end, setEnd] = useState<string | null>(null);
   const [conflictWarning, setConflictWarning] = useState(false);
 
   const grid = useMemo(() => buildMonthGrid(month), [month]);
-  const today = dayjs("2026-10-01");
+  const today = dayjs().startOf("day");
 
   function handleTapDay(dateISO: string) {
     setConflictWarning(false);
@@ -86,7 +86,18 @@ export default function DatePickerScreen({ route, navigation }: Props) {
       ) : (
         <>
           <View style={styles.calendarCard}>
-            <Text style={styles.monthLabel}>{dayjs(month).format("[Tháng] MM, YYYY")}</Text>
+            <View style={styles.monthRow}>
+              <Pressable
+                disabled={dayjs(month).isSame(dayjs(), "month")}
+                onPress={() => setMonth(dayjs(month).subtract(1, "month").format("YYYY-MM-DD"))}
+              >
+                <Text style={[styles.monthArrow, dayjs(month).isSame(dayjs(), "month") && { opacity: 0.3 }]}>‹</Text>
+              </Pressable>
+              <Text style={styles.monthLabel}>{dayjs(month).format("[Tháng] MM, YYYY")}</Text>
+              <Pressable onPress={() => setMonth(dayjs(month).add(1, "month").format("YYYY-MM-DD"))}>
+                <Text style={styles.monthArrow}>›</Text>
+              </Pressable>
+            </View>
             <View style={styles.weekRow}>
               {WEEKDAYS.map((w) => (
                 <Text key={w} style={styles.weekday}>
@@ -144,7 +155,7 @@ export default function DatePickerScreen({ route, navigation }: Props) {
             {conflictWarning && (
               <View style={styles.warningBox}>
                 <Text style={styles.warningText}>
-                  Đêm 8/10 đã có khách đặt, hãy chọn khoảng ngày không giao với ngày đã đặt.
+                  Khoảng ngày này có đêm đã có khách đặt, hãy chọn khoảng ngày không giao với ngày đã kín.
                 </Text>
               </View>
             )}
@@ -184,7 +195,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
   },
-  monthLabel: { color: theme.colors.text, fontWeight: "700", fontSize: 14, textAlign: "center", marginBottom: 10 },
+  monthRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
+  monthArrow: { color: theme.colors.primary, fontSize: 24, fontWeight: "700", paddingHorizontal: 12 },
+  monthLabel: { color: theme.colors.text, fontWeight: "700", fontSize: 14, textAlign: "center" },
   weekRow: { flexDirection: "row", marginBottom: 6 },
   weekday: { flex: 1, textAlign: "center", color: theme.colors.textFaint, fontSize: 11 },
   grid: { flexDirection: "row", flexWrap: "wrap" },

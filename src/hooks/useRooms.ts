@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchRooms, fetchRoomById } from "@/api/mockApi";
+import { fetchRooms, fetchRoomById, fetchFeaturedRooms } from "@/api/mockApi";
 import { FilterState } from "@/types/room";
 
 export function useRooms(filters: FilterState) {
@@ -17,5 +17,13 @@ export function useRoom(id: string | undefined) {
     queryKey: ["room", id],
     queryFn: () => fetchRoomById(id as string),
     enabled: !!id,
+  });
+}
+
+export function useFeaturedRooms() {
+  return useQuery({
+    queryKey: ["featuredRooms"],
+    queryFn: () => fetchFeaturedRooms(6),
+    staleTime: 30_000,
   });
 }

@@ -1,55 +1,163 @@
-import { MOCK_ROOMS } from "@/data/mockRooms";
-import { Booking, BookingRange, FilterState, Room } from "@/types/room";
-import { rangesOverlap } from "@/utils/dateOverlap";
+import dayjs from "dayjs";
+import { CURRENT_USER_ID, getDb } from "@/db/database";
+import {
+  AreaRange,
+  Booking,
+  BookingRange,
+  FilterState,
+  Room,
+  RoomAmenity,
+  UserProfile,
+} from "@/types/room";
+import { normalizeText } from "@/utils/text";
 
-function delay<T>(value: T, ms = 500): Promise<T> {
-  return new Promise((resolve) => setTimeout(() => resolve(value), ms));
+/**
+ * Data layer backed by the local SQLite database (src/db/database.ts).
+ * (File name kept as mockApi.ts so existing imports keep working.)
+ */
+
+const todayISO = () => dayjs().format("YYYY-MM-DD");
+
+// A room is "occupied" for [start, end) when a confirmed booking overlaps it:
+//   b.start < end  AND  start < b.end
+// Placeholders: (end, start)
+const OCCUPIED_SQL = `EXISTS (
+  SELECT 1 FROM bookings b
+  WHERE b.room_id = r.id AND b.status = 'confirmed'
+    AND b.start_date < ? AND ? < b.end_date
+)`;
+
+const AREA_SQL: Record<AreaRange, string> = {
+  small: "r.area_m2 < 30",
+  medium: "r.area_m2 >= 30 AND r.area_m2 <= 50",
+  large: "r.area_m2 > 50",
+};
+
+interface RoomRow {
+  id: string;
+  name: string;
+  city: string;
+  area_m2: number;
+  price_per_night: number;
+  rating: number;
+  reviews: number;
+  rooms_left: number;
+  guests: number;
+  amenities: string;
+  has_city_view: number;
+  has_pool: number;
+  image_color: string;
+  image_url: string;
+  favorite: number;
+  description: string;
+  occupied: number;
 }
 
-// ---- In-memory "server" state -------------------------------------------
-
-// Pre-seeded booked ranges per room, so the calendar screen has something
-// to lock out (mirrors the greyed-out days in the mockup).
-const serverBookedRanges: Record<string, BookingRange[]> = {};
-for (const room of MOCK_ROOMS.slice(0, 40)) {
-  serverBookedRanges[room.id] = [
-    { start: "2026-10-08", end: "2026-10-11" },
-    { start: "2026-10-20", end: "2026-10-23" },
-  ];
+function mapRoom(row: RoomRow): Room {
+  return {
+    id: row.id,
+    name: row.name,
+    city: row.city,
+    areaM2: row.area_m2,
+    status: row.occupied ? "occupied" : "available",
+    pricePerNight: row.price_per_night,
+    rating: row.rating,
+    reviews: row.reviews,
+    roomsLeft: row.rooms_left,
+    guests: row.guests,
+    amenities: JSON.parse(row.amenities) as RoomAmenity[],
+    hasCityView: !!row.has_city_view,
+    hasPool: !!row.has_pool,
+    imageColor: row.image_color,
+    imageUrl: row.image_url,
+    favorite: !!row.favorite,
+    description: row.description,
+  };
 }
 
-let serverBookings: Booking[] = [];
-let bookingSeq = 1;
+/** Range used to compute Available/Occupied: chosen dates, otherwise tonight. */
+function statusRange(f: Pick<FilterState, "startDate" | "endDate">) {
+  if (f.startDate && f.endDate) return { start: f.startDate, end: f.endDate };
+  const t = todayISO();
+  return { start: t, end: dayjs(t).add(1, "day").format("YYYY-MM-DD") };
+}
 
 // ---- Rooms ----------------------------------------------------------------
 
 export async function fetchRooms(filters: FilterState): Promise<Room[]> {
-  await delay(null, 450);
+  const db = await getDb();
+  const { start, end } = statusRange(filters);
 
-  const q = filters.query.trim().toLowerCase();
+  const where: string[] = [];
+  const params: (string | number)[] = [];
 
-  return MOCK_ROOMS.filter((room) => {
-    if (q && !room.name.toLowerCase().includes(q) && !room.city.toLowerCase().includes(q)) {
-      return false;
-    }
-    if (filters.guests != null && room.guests < filters.guests) return false;
-    if (filters.maxPrice != null && room.pricePerNight > filters.maxPrice) return false;
-    if (filters.cityViewOnly && !room.hasCityView) return false;
-    if (filters.poolOnly && !room.hasPool) return false;
-    return true;
-  });
+  const q = normalizeText(filters.query);
+  if (q) {
+    where.push("r.search_text LIKE ?");
+    params.push(`%${q}%`);
+  }
+  if (filters.guests != null) {
+    where.push("r.guests >= ?");
+    params.push(filters.guests);
+  }
+  if (filters.maxPrice != null) {
+    where.push("r.price_per_night <= ?");
+    params.push(filters.maxPrice);
+  }
+  if (filters.cityViewOnly) where.push("r.has_city_view = 1");
+  if (filters.poolOnly) where.push("r.has_pool = 1");
+  if (filters.areaRange) where.push(`(${AREA_SQL[filters.areaRange]})`);
+  if (filters.status) {
+    where.push(filters.status === "occupied" ? OCCUPIED_SQL : `NOT ${OCCUPIED_SQL}`);
+    params.push(end, start);
+  }
+
+  const sql = `
+    SELECT r.*, ${OCCUPIED_SQL} AS occupied
+    FROM rooms r
+    ${where.length ? "WHERE " + where.join(" AND ") : ""}
+    ORDER BY r.idx`;
+
+  // SELECT placeholders come first, then the WHERE ones.
+  const rows = await db.getAllAsync<RoomRow>(sql, [end, start, ...params]);
+  return rows.map(mapRoom);
 }
 
 export async function fetchRoomById(id: string): Promise<Room | undefined> {
-  await delay(null, 250);
-  return MOCK_ROOMS.find((r) => r.id === id);
+  const db = await getDb();
+  const { start, end } = statusRange({ startDate: null, endDate: null });
+  const row = await db.getFirstAsync<RoomRow>(
+    `SELECT r.*, ${OCCUPIED_SQL} AS occupied FROM rooms r WHERE r.id = ?`,
+    [end, start, id]
+  );
+  return row ? mapRoom(row) : undefined;
+}
+
+/** Best-rated rooms that are free tonight (home screen "Phòng nổi bật"). */
+export async function fetchFeaturedRooms(limit = 6): Promise<Room[]> {
+  const db = await getDb();
+  const { start, end } = statusRange({ startDate: null, endDate: null });
+  const rows = await db.getAllAsync<RoomRow>(
+    `SELECT r.*, 0 AS occupied FROM rooms r
+     WHERE NOT ${OCCUPIED_SQL}
+     ORDER BY r.rating DESC, r.reviews DESC
+     LIMIT ?`,
+    [end, start, limit]
+  );
+  return rows.map(mapRoom);
 }
 
 // ---- Availability / booked ranges -----------------------------------------
 
 export async function fetchBookedRanges(roomId: string): Promise<BookingRange[]> {
-  await delay(null, 350);
-  return serverBookedRanges[roomId] ?? [];
+  const db = await getDb();
+  const rows = await db.getAllAsync<{ start_date: string; end_date: string }>(
+    `SELECT start_date, end_date FROM bookings
+     WHERE room_id = ? AND status = 'confirmed' AND end_date >= ?
+     ORDER BY start_date`,
+    [roomId, todayISO()]
+  );
+  return rows.map((r) => ({ start: r.start_date, end: r.end_date }));
 }
 
 // ---- Bookings ---------------------------------------------------------------
@@ -72,35 +180,55 @@ export class BookingConflictError extends Error {
   }
 }
 
+const bookingCode = (n: number) => `BK${String(n).padStart(5, "0")}`;
+const bookingNumber = (code: string) => Number(code.replace(/^BK/, ""));
+
 /**
- * Simulates a real backend: re-checks the range against the current server
- * state at confirm-time. About 1 in 6 confirmations also gets a "someone
- * else just booked it" race injected, so the 409 / conflict-handling path
- * (Mini-Project requirement: "Xử lý 2 người đặt cùng lúc") is reachable
- * without needing two physical devices.
+ * Two people booking the same room at the same time:
+ *   FIRST COMMIT WINS. The overlap check and the INSERT run inside ONE
+ *   exclusive SQLite transaction, so writes are serialised: whoever gets in
+ *   first is saved, the second one re-checks, sees the new row and gets a
+ *   BookingConflictError (409).
  */
 export async function createBooking(payload: CreateBookingPayload): Promise<Booking> {
-  await delay(null, 700);
+  const { start, end } = payload.range;
+  if (!(start < end)) throw new Error("Khoảng ngày không hợp lệ.");
+  if (start < todayISO()) throw new Error("Không thể đặt phòng trong quá khứ.");
 
-  const existing = serverBookedRanges[payload.roomId] ?? [];
-  const raceInjected = Math.random() < 1 / 6;
+  const db = await getDb();
+  const createdAt = new Date().toISOString();
+  let newId = 0;
 
-  const conflict =
-    existing.some((r) => rangesOverlap(payload.range, r)) ||
-    (raceInjected &&
-      // Pretend another user booked the exact same range a moment ago.
-      true);
+  await db.withExclusiveTransactionAsync(async (txn) => {
+    const room = await txn.getFirstAsync<{ price_per_night: number; guests: number }>(
+      "SELECT price_per_night, guests FROM rooms WHERE id = ?",
+      [payload.roomId]
+    );
+    if (!room) throw new Error("Phòng không tồn tại.");
+    if (payload.guests > room.guests) throw new Error(`Phòng chỉ chứa tối đa ${room.guests} khách.`);
 
-  if (conflict) {
-    // Persist the "other user's" booking so the calendar reflects it on retry.
-    serverBookedRanges[payload.roomId] = [...existing, payload.range];
-    throw new BookingConflictError();
-  }
+    const clash = await txn.getFirstAsync(
+      `SELECT 1 FROM bookings
+       WHERE room_id = ? AND status = 'confirmed' AND start_date < ? AND ? < end_date
+       LIMIT 1`,
+      [payload.roomId, end, start]
+    );
+    if (clash) throw new BookingConflictError();
 
-  serverBookedRanges[payload.roomId] = [...existing, payload.range];
+    const res = await txn.runAsync(
+      `INSERT INTO bookings (room_id, user_id, start_date, end_date, guests, nights,
+         price_per_night, total, status, created_at)
+       VALUES (?,?,?,?,?,?,?,?,'confirmed',?)`,
+      [
+        payload.roomId, CURRENT_USER_ID, start, end, payload.guests, payload.nights,
+        room.price_per_night, payload.total, createdAt,
+      ]
+    );
+    newId = res.lastInsertRowId;
+  });
 
-  const booking: Booking = {
-    id: `bk-${bookingSeq++}`,
+  return {
+    id: bookingCode(newId),
     roomId: payload.roomId,
     roomName: payload.roomName,
     pricePerNight: payload.pricePerNight,
@@ -108,14 +236,90 @@ export async function createBooking(payload: CreateBookingPayload): Promise<Book
     range: payload.range,
     nights: payload.nights,
     total: payload.total,
-    createdAt: new Date().toISOString(),
+    createdAt,
     status: "upcoming",
   };
-  serverBookings = [booking, ...serverBookings];
-  return booking;
+}
+
+interface BookingRow {
+  id: number;
+  room_id: string;
+  room_name: string;
+  image_url: string;
+  city: string;
+  start_date: string;
+  end_date: string;
+  guests: number;
+  nights: number;
+  price_per_night: number;
+  total: number;
+  status: "confirmed" | "cancelled";
+  created_at: string;
 }
 
 export async function fetchMyBookings(): Promise<Booking[]> {
-  await delay(null, 300);
-  return serverBookings;
+  const db = await getDb();
+  const today = todayISO();
+  const rows = await db.getAllAsync<BookingRow>(
+    `SELECT b.*, r.name AS room_name, r.image_url, r.city
+     FROM bookings b JOIN rooms r ON r.id = b.room_id
+     WHERE b.user_id = ?
+     ORDER BY b.start_date DESC`,
+    [CURRENT_USER_ID]
+  );
+
+  const list: Booking[] = rows.map((r) => ({
+    id: bookingCode(r.id),
+    roomId: r.room_id,
+    roomName: r.room_name,
+    pricePerNight: r.price_per_night,
+    guests: r.guests,
+    range: { start: r.start_date, end: r.end_date },
+    nights: r.nights,
+    total: r.total,
+    createdAt: r.created_at,
+    imageUrl: r.image_url,
+    city: r.city,
+    status: r.status === "cancelled" ? "cancelled" : r.end_date < today ? "past" : "upcoming",
+  }));
+
+  // upcoming first (soonest first), then past / cancelled (latest first)
+  const upcoming = list.filter((b) => b.status === "upcoming").reverse();
+  return [...upcoming, ...list.filter((b) => b.status !== "upcoming")];
+}
+
+export async function cancelBooking(id: string): Promise<void> {
+  const db = await getDb();
+  const res = await db.runAsync(
+    `UPDATE bookings SET status = 'cancelled'
+     WHERE id = ? AND user_id = ? AND status = 'confirmed' AND end_date >= ?`,
+    [bookingNumber(id), CURRENT_USER_ID, todayISO()]
+  );
+  if (res.changes === 0) throw new Error("Không thể huỷ đặt chỗ này.");
+}
+
+// ---- Profile -----------------------------------------------------------------
+
+export async function fetchProfile(): Promise<UserProfile> {
+  const db = await getDb();
+  const row = await db.getFirstAsync<{
+    id: number; name: string; email: string; phone: string; member_since: string;
+  }>("SELECT * FROM users WHERE id = ?", [CURRENT_USER_ID]);
+  if (!row) throw new Error("Không tìm thấy hồ sơ.");
+  return { id: row.id, name: row.name, email: row.email, phone: row.phone, memberSince: row.member_since };
+}
+
+export async function updateProfile(
+  p: Pick<UserProfile, "name" | "email" | "phone">
+): Promise<UserProfile> {
+  const name = p.name.trim();
+  const email = p.email.trim();
+  if (!name) throw new Error("Vui lòng nhập họ tên.");
+  if (!/^\S+@\S+\.\S+$/.test(email)) throw new Error("Email không hợp lệ.");
+
+  const db = await getDb();
+  await db.runAsync("UPDATE users SET name = ?, email = ?, phone = ? WHERE id = ?", [
+    name, email, p.phone.trim(), CURRENT_USER_ID,
+  ]);
+  return fetchProfile();
 }

@@ -57,7 +57,7 @@ export default function RoomDetailScreen({ route, navigation }: Props) {
             resizeMode="cover"
           />
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>{room.roomsLeft <= 2 ? "Suite" : "Phòng"}</Text>
+            <Text style={styles.badgeText}>{room.status === "available" ? "Available" : "Occupied"}</Text>
           </View>
           <Ionicons
             name="heart"
@@ -75,6 +75,20 @@ export default function RoomDetailScreen({ route, navigation }: Props) {
             </Text>
           </View>
           <Text style={styles.name}>{room.name}</Text>
+          <View style={styles.metaRow}>
+            <View style={styles.amenityChip}>
+              <Ionicons name="location" size={14} color={theme.colors.text} />
+              <Text style={styles.amenityText}>{room.city}</Text>
+            </View>
+            <View style={styles.amenityChip}>
+              <Ionicons name="resize" size={14} color={theme.colors.text} />
+              <Text style={styles.amenityText}>{room.areaM2} m²</Text>
+            </View>
+            <View style={styles.amenityChip}>
+              <Ionicons name="people" size={14} color={theme.colors.text} />
+              <Text style={styles.amenityText}>{room.guests} khách</Text>
+            </View>
+          </View>
           <Text style={styles.desc}>{room.description}</Text>
 
           <Text style={styles.sectionTitle}>Tiện nghi</Text>
@@ -139,6 +153,7 @@ const styles = StyleSheet.create({
   ratingRow: { flexDirection: "row", alignItems: "center", gap: 5 },
   ratingText: { color: theme.colors.textMuted, fontSize: 12 },
   name: { color: theme.colors.text, fontSize: 22, fontWeight: "800", marginTop: 6 },
+  metaRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
   desc: { color: theme.colors.textMuted, fontSize: 13, marginTop: 10, lineHeight: 19 },
   sectionTitle: { color: theme.colors.text, fontWeight: "700", fontSize: 15, marginTop: 22, marginBottom: 10 },
   amenityGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },

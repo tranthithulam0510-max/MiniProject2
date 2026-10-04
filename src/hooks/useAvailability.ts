@@ -6,6 +6,6 @@ export function useAvailability(roomId: string | undefined) {
     queryKey: ["availability", roomId],
     queryFn: () => fetchBookedRanges(roomId as string),
     enabled: !!roomId,
-    staleTime: 10_000,
+    staleTime: 0,
   });
 }
