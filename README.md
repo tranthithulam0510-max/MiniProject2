@@ -1,77 +1,67 @@
-# Mini Project 2 — Room Booking App
+# Mini Project 2 — Ứng dụng đặt phòng
 
-React Native + Expo (TypeScript, strict) app built from the two reference
-screenshots: the visual design/flow from the booking-app mockup, and the
-requirements table from "Mini-Project 2 Requirements & Tech Stack".
+Ứng dụng đặt phòng khách sạn viết bằng React Native + Expo (TypeScript, strict mode). Người dùng xem danh sách phòng, tìm kiếm, lọc nhiều tiêu chí, chọn ngày, đặt phòng, xem lại phòng đã đặt và quản lý hồ sơ cá nhân. Dữ liệu được lưu bằng SQLite ngay trên máy.
 
-## Setup
+## Cài đặt và chạy
 
 ```bash
 npm install
-npx expo start
+npx expo start -c
 ```
 
-Requires Node 18+. Open in Expo Go (scan QR) or an iOS/Android simulator.
+Yêu cầu Node 18 trở lên. Mở bằng Expo Go (quét mã QR) hoặc máy ảo Android/iOS.
 
-## Tech stack (as required)
+Lần chạy đầu tiên, app tự tạo database `roombooking.db` và thêm sẵn 520 phòng mẫu. Muốn xoá sạch dữ liệu để tạo lại, gỡ app khỏi máy (hoặc emulator) rồi chạy lại.
 
-| Layer | Technology |
+## Công nghệ sử dụng
+
+| Thành phần | Công nghệ |
 |---|---|
 | Framework | React Native + Expo (managed) |
-| Language | TypeScript (strict mode) |
-| Navigation | React Navigation 7 (bottom tabs + native stack) |
-| State | Zustand (client) + TanStack Query (server) |
+| Ngôn ngữ | TypeScript (strict mode) |
+| Điều hướng | React Navigation 7 (bottom tabs + native stack) |
+| Quản lý state | Zustand (phía client) + TanStack Query (dữ liệu từ database) |
+| Cơ sở dữ liệu | SQLite (`expo-sqlite`) |
 
-## Requirement → implementation map
-
-| Requirement | Where it's implemented |
-|---|---|
-| Search + multi-criteria filter chips | `src/store/filterStore.ts` (Zustand) + `src/screens/RoomsListScreen.tsx`. Text search is debounced 350 ms via a local `useState` + `setTimeout` before it touches the store/query key. Chips (2 khách, ≤10tr, View thành phố, Hồ bơi) toggle independent filter fields, all combined in `api/mockApi.fetchRooms`. |
-| 60fps FlatList feed with room cards | `src/components/RoomCard.tsx` wrapped in `React.memo`; `RoomsListScreen` uses `keyExtractor`, `getItemLayout` (fixed-height cards → O(1) layout), `useCallback` for `renderItem`/`keyExtractor`, `initialNumToRender`/`maxToRenderPerBatch`/`windowSize` tuning, and `removeClippedSubviews`. `src/data/mockRooms.ts` seeds **520** rooms (deterministic PRNG) so scroll performance is actually exercised. |
-| Date picker with conflict prevention | `src/screens/DatePickerScreen.tsx` + `src/utils/dateOverlap.ts`. Core check is the classic interval overlap `startA < endB && startB < endA` (`rangesOverlap`). Already-booked days are locked (struck-through, untappable) from `useAvailability` (TanStack Query). The tentative range is re-validated against booked ranges the moment the second day is tapped, showing an inline warning on conflict. |
-| Re-check on "Xác nhận" | `src/api/mockApi.ts` → `createBooking` re-validates the range against the live server-side `serverBookedRanges` map (not just client state) before committing, and also injects a random "someone just booked it" race about 1 in 6 confirmations so the conflict path is reachable in testing without two devices. |
-| Handle two people booking at once | `createBooking` throws `BookingConflictError` (409-style). `src/hooks/useCreateBooking.ts` catches it in `onError`, invalidates the `availability` query so the calendar reflects the new lock, and `ConfirmBookingScreen` routes to `BookingErrorScreen` (new screen, not in the original mockup) with a retry-to-datepicker action. |
-| Stack + Tabs navigation | `src/navigation/RootNavigator.tsx` (4 bottom tabs: Trang chủ, Phòng, Đặt chỗ, Cá nhân) and `src/navigation/RoomsStackNavigator.tsx` (RoomsList → RoomDetail → DatePicker → ConfirmBooking → BookingSuccess/BookingError, all as a stack with back navigation). |
-| Server data via TanStack Query | `src/hooks/useRooms.ts`, `useAvailability.ts`, `useCreateBooking.ts`, `useMyBookings.ts` — all with `isLoading`/`isError` states surfaced in the screens (spinners + retry links). `src/api/mockApi.ts` is the mock backend (simulated latency, in-memory state). |
-
-## Screens added beyond the mockup
-
-The mockup only showed 6 screens with no "conflict" state. Two screens were
-added to satisfy the requirements table:
-
-- **BookingErrorScreen** — shown on a 409 double-booking conflict, with a
-  "Chọn lại ngày" action that clears the draft and sends the user back to
-  the (now-refreshed) calendar.
-- Loading/error states are inline on `RoomsListScreen` and
-  `MyBookingsScreen` rather than separate screens, since TanStack Query
-  already exposes `isLoading`/`isError` cleanly.
-
-## Notes / things you may want to change
-
-- The calendar is hand-rolled (`DatePickerScreen.tsx`) instead of pulling in
-  `react-native-calendars`, to keep dependencies minimal — swap it in if you
-  want month paging.
-- `mockRooms.ts` uses a seeded PRNG (`mulberry32`) so the dataset is
-  identical on every run — useful for consistent FlatList perf testing.
-- Pricing (breakfast fee, 8% tax) in `ConfirmBookingScreen` is illustrative;
-  adjust to match whatever your assignment spec expects.
-
-
-## Cập nhật: SQLite + lọc nâng cao + chống đặt trùng
-
-Chạy lại: `npm install` rồi `npx expo start -c`. Dữ liệu lưu bằng `expo-sqlite` (file `roombooking.db`, tự tạo và seed 520 phòng ở lần chạy đầu). Muốn reset dữ liệu: xoá app khỏi máy/emulator rồi chạy lại.
+## Chức năng và vị trí trong code
 
 | Chức năng | Vị trí |
-| --- | --- |
-| Database (users, rooms, bookings + index) | `src/db/database.ts` |
-| Truy vấn, đặt/huỷ phòng, profile | `src/api/mockApi.ts` (giữ tên file cũ, nay chạy trên SQLite) |
-| Lọc: từ khoá (không dấu), khách, giá, view, hồ bơi, diện tích, Available/Occupied, khoảng ngày | `src/store/filterStore.ts`, `RoomsListScreen.tsx`, `DateRangeModal.tsx` |
-| Thẻ phòng: ảnh, tên, location, m², badge Available/Occupied | `RoomCard.tsx` |
-| Trang chủ: tìm kiếm thật + phòng nổi bật từ DB | `HomeScreen.tsx` |
-| Phòng đã đặt (sắp tới / đã qua / đã huỷ, nút huỷ) | `MyBookingsScreen.tsx` |
-| Profile (xem/sửa tên, email, SĐT, thống kê) | `ProfileScreen.tsx` |
+|---|---|
+| Cơ sở dữ liệu (bảng users, rooms, bookings và index) | `src/db/database.ts` |
+| Truy vấn phòng, đặt phòng, huỷ phòng, hồ sơ | `src/api/mockApi.ts` (giữ tên file cũ, bên trong chạy trên SQLite) |
+| Tìm kiếm theo từ khoá (gõ không dấu vẫn tìm được) | `src/screens/HomeScreen.tsx`, `src/screens/RoomsListScreen.tsx`, `src/utils/text.ts` |
+| Lọc nhiều tiêu chí: số khách, giá, view thành phố, hồ bơi, diện tích, trạng thái Available/Occupied, khoảng ngày | `src/store/filterStore.ts`, `src/screens/RoomsListScreen.tsx`, `src/components/DateRangeModal.tsx` |
+| Thẻ phòng: ảnh, tên, địa điểm, diện tích, trạng thái Available/Occupied | `src/components/RoomCard.tsx` |
+| Danh sách cuộn mượt (React.memo, getItemLayout, tối ưu FlatList) | `src/components/RoomCard.tsx`, `src/screens/RoomsListScreen.tsx` |
+| Chọn ngày và chặn đặt trùng lịch | `src/screens/DatePickerScreen.tsx`, `src/utils/dateOverlap.ts` |
+| Xác nhận đặt phòng, kiểm tra lại khi bấm "Xác nhận" | `src/screens/ConfirmBookingScreen.tsx`, `src/api/mockApi.ts` |
+| Xử lý hai người đặt cùng lúc | `src/api/mockApi.ts`, `src/hooks/useCreateBooking.ts`, `src/screens/BookingErrorScreen.tsx` |
+| Phòng đã đặt (sắp tới, đã qua, đã huỷ, nút huỷ đặt phòng) | `src/screens/MyBookingsScreen.tsx`, `src/hooks/useCancelBooking.ts` |
+| Hồ sơ cá nhân (xem và sửa tên, email, số điện thoại, thống kê) | `src/screens/ProfileScreen.tsx`, `src/hooks/useProfile.ts` |
+| Điều hướng: 4 tab (Trang chủ, Phòng, Đặt chỗ, Cá nhân) và stack đặt phòng | `src/navigation/RootNavigator.tsx`, `src/navigation/RoomsStackNavigator.tsx` |
 
-### Hai người cùng đặt một phòng
-Ai xác nhận trước thì được (first-commit-wins). Việc kiểm tra trùng ngày và INSERT nằm trong một exclusive transaction (`withExclusiveTransactionAsync`) nên các lần ghi được xếp hàng. Người đến sau thấy booking đã tồn tại và nhận `BookingConflictError` (409) rồi được đưa tới `BookingErrorScreen`. Đặt nối ngày (trả phòng hôm nay, nhận phòng hôm nay) không bị coi là trùng.
+## Cơ sở dữ liệu
 
-Đã bỏ cơ chế giả lập "1/6 lần bị đặt trước" cũ vì giờ xung đột là thật, do database quyết định.
+Có 3 bảng:
+
+- `users`: thông tin người dùng (tên, email, số điện thoại, ngày tham gia).
+- `rooms`: 520 phòng (tên, địa điểm, diện tích, giá, số khách, tiện nghi, ảnh).
+- `bookings`: các lượt đặt phòng (phòng, người đặt, ngày nhận, ngày trả, tổng tiền, trạng thái `confirmed` hoặc `cancelled`).
+
+Trạng thái Available/Occupied của phòng **không lưu cố định**. App tính ra từ bảng `bookings` theo khoảng ngày đang lọc (nếu chưa chọn ngày thì tính cho đêm nay). Các index trên diện tích, giá, số khách và ngày đặt giúp việc lọc nhiều tiêu chí chạy nhanh.
+
+## Hai người cùng đặt một phòng thì xử lý thế nào?
+
+Quy tắc là **ai xác nhận trước thì được đặt** (first-commit-wins).
+
+Việc kiểm tra trùng ngày và lưu booking nằm trong **một transaction độc quyền** của SQLite (`withExclusiveTransactionAsync`), nên các lần ghi được xếp hàng lần lượt. Người đến sau sẽ thấy booking đã tồn tại và nhận lỗi `BookingConflictError` (mã 409), sau đó được đưa tới màn hình "Đặt phòng không thành công" để chọn lại ngày.
+
+Điều kiện trùng lịch là `ngàyNhậnA < ngàyTrảB và ngàyNhậnB < ngàyTrảA`. Vì vậy đặt nối ngày (người này trả phòng đúng hôm người kia nhận phòng) **không** bị coi là trùng.
+
+## Lưu ý khi chỉnh sửa
+
+- Khi sửa dữ liệu mẫu (tên phòng, giá, ảnh...) trong `src/data/mockRooms.ts`, cần tăng `SCHEMA_VERSION` trong `src/db/database.ts` để app tạo lại database. Các booking đã đặt thử sẽ bị xoá.
+- Dữ liệu mẫu dùng bộ sinh số ngẫu nhiên cố định (`mulberry32`) nên mỗi lần seed đều ra cùng một bộ phòng. Danh sách `NAMES` phải giữ đúng 12 tên để dữ liệu không bị lệch.
+- Database nằm riêng trên từng máy, hai điện thoại khác nhau không thấy booking của nhau. Muốn nhiều người dùng chung dữ liệu thật, cần thêm backend (Firebase, Supabase hoặc server riêng).
+- Phí bữa sáng và thuế 8% trong `ConfirmBookingScreen` chỉ mang tính minh hoạ, bạn chỉnh theo yêu cầu đề bài.
+- Chưa cấu hình chạy SQLite trên web, nên hãy thử trên điện thoại hoặc máy ảo.
