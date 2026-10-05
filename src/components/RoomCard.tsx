@@ -33,7 +33,7 @@ function RoomCardBase({ room, onPress }: Props) {
           ]}
         >
           <Text style={styles.statusText}>
-            {room.status === "available" ? "Available" : "Occupied"}
+            {room.status === "available" ? "Còn trống" : "Đã kín"}
           </Text>
         </View>
       </View>
@@ -57,10 +57,10 @@ function RoomCardBase({ room, onPress }: Props) {
         <View style={styles.metaRow}>
           <Ionicons name="location" size={12} color={theme.colors.textMuted} />
           <Text style={styles.metaText} numberOfLines={1}>
-            {room.city} · {room.areaM2} m² · {room.guests} khách
+            {room.city} · {room.areaM2} m² · {room.guests} người
           </Text>
         </View>
-        <Text style={styles.price}>{formatVND(room.pricePerNight)}/đêm</Text>
+        <Text style={styles.price}>{formatVND(room.pricePerNight)}/ngày</Text>
       </View>
     </Pressable>
   );

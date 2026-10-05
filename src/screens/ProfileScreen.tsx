@@ -1,28 +1,66 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TextInput, Pressable, ScrollView, ActivityIndicator, Alert } from "react-native";
+import { View, Text, StyleSheet, TextInput, Pressable, ScrollView, ActivityIndicator, Alert, Modal } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "@/theme/theme";
 import { useProfile, useUpdateProfile } from "@/hooks/useProfile";
 import { useMyBookings } from "@/hooks/useMyBookings";
 import PrimaryButton from "@/components/PrimaryButton";
-
+import { useAuthStore } from "@/store/authStore";
+ 
 const MENU = [
-  { icon: "card", label: "Phương thức thanh toán" },
-  { icon: "notifications", label: "Thông báo" },
-  { icon: "help-circle", label: "Trợ giúp" },
+  { key: "payment", icon: "card", label: "Phương thức thanh toán" },
+  { key: "notify", icon: "notifications", label: "Thông báo" },
+  { key: "help", icon: "help-circle", label: "Trợ giúp" },
 ] as const;
-
+ 
+const FAQ = [
+  {
+    q: "Làm sao để đặt phòng học?",
+    a: "Vào tab Phòng học, chọn phòng phù hợp, bấm Chọn ngày, chọn ngày bắt đầu và ngày kết thúc rồi bấm Xác nhận đặt phòng.",
+  },
+  {
+    q: "Vì sao có ngày không chọn được?",
+    a: "Ngày bị gạch ngang nghĩa là phòng đã có người đặt. Hãy chọn khoảng ngày khác không giao với các ngày đó.",
+  },
+  {
+    q: "Tôi bị báo đặt phòng không thành công?",
+    a: "Có thể người khác vừa đặt cùng phòng và cùng ngày trước bạn. Bấm Chọn lại ngày để chọn ngày còn trống.",
+  },
+  {
+    q: "Làm sao để huỷ đặt phòng?",
+    a: "Vào tab Đặt chỗ, chọn lượt đặt sắp tới rồi bấm Huỷ đặt phòng. Lượt đã qua không thể huỷ.",
+  },
+  {
+    q: "Tôi có thể đổi thông tin cá nhân không?",
+    a: "Có. Ở tab Cá nhân, bấm vào thẻ thông tin để sửa họ tên, email và số điện thoại.",
+  },
+];
+ 
 export default function ProfileScreen() {
   const { data: profile, isLoading, isError, refetch } = useProfile();
   const { data: bookings } = useMyBookings();
   const update = useUpdateProfile();
-
+  const signOut = useAuthStore((s) => s.signOut);
+  const [helpOpen, setHelpOpen] = useState(false);
+ 
+  function onMenuPress(key: (typeof MENU)[number]["key"]) {
+    if (key === "help") setHelpOpen(true);
+    else Alert.alert("Sắp ra mắt", "Tính năng này đang được phát triển.");
+  }
+ 
+  function confirmLogout() {
+    Alert.alert("Đăng xuất?", "Bạn sẽ cần đăng nhập lại để đặt phòng.", [
+      { text: "Ở lại", style: "cancel" },
+      { text: "Đăng xuất", style: "destructive", onPress: signOut },
+    ]);
+  }
+ 
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-
+ 
   function startEdit() {
     if (!profile) return;
     setName(profile.name);
@@ -30,7 +68,7 @@ export default function ProfileScreen() {
     setPhone(profile.phone);
     setEditing(true);
   }
-
+ 
   function save() {
     update.mutate(
       { name, email, phone },
@@ -40,7 +78,7 @@ export default function ProfileScreen() {
       }
     );
   }
-
+ 
   if (isLoading) {
     return (
       <SafeAreaView style={[styles.safe, styles.centered]}>
@@ -48,7 +86,7 @@ export default function ProfileScreen() {
       </SafeAreaView>
     );
   }
-
+ 
   if (isError || !profile) {
     return (
       <SafeAreaView style={[styles.safe, styles.centered]}>
@@ -57,10 +95,10 @@ export default function ProfileScreen() {
       </SafeAreaView>
     );
   }
-
+ 
   const total = bookings?.length ?? 0;
   const upcoming = bookings?.filter((b) => b.status === "upcoming").length ?? 0;
-
+ 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <ScrollView keyboardShouldPersistTaps="handled">
@@ -73,7 +111,7 @@ export default function ProfileScreen() {
           <Text style={styles.name}>{profile.name}</Text>
           <Text style={styles.sub}>Thành viên từ {profile.memberSince.slice(0, 4)}</Text>
         </View>
-
+ 
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
             <Text style={styles.statValue}>{total}</Text>
@@ -84,7 +122,7 @@ export default function ProfileScreen() {
             <Text style={styles.statLabel}>Sắp tới</Text>
           </View>
         </View>
-
+ 
         <View style={styles.menu}>
           {editing ? (
             <View style={styles.formCard}>
@@ -122,20 +160,48 @@ export default function ProfileScreen() {
               </View>
             </Pressable>
           )}
-
+ 
           {MENU.map((m) => (
-            <View key={m.label} style={styles.menuRow}>
+            <Pressable key={m.key} style={styles.menuRow} onPress={() => onMenuPress(m.key)}>
               <Ionicons name={m.icon} size={18} color={theme.colors.textMuted} />
               <Text style={styles.menuLabel}>{m.label}</Text>
               <Ionicons name="chevron-forward" size={16} color={theme.colors.textFaint} />
-            </View>
+            </Pressable>
           ))}
+ 
+          <PrimaryButton title="Đăng xuất" variant="outline" style={{ marginTop: 6 }} onPress={confirmLogout} />
         </View>
       </ScrollView>
+ 
+      <Modal visible={helpOpen} animationType="slide" transparent onRequestClose={() => setHelpOpen(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Trợ giúp</Text>
+              <Pressable onPress={() => setHelpOpen(false)} hitSlop={10} accessibilityLabel="Đóng">
+                <Ionicons name="close" size={22} color={theme.colors.text} />
+              </Pressable>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {FAQ.map((f) => (
+                <View key={f.q} style={styles.faqItem}>
+                  <Text style={styles.faqQ}>{f.q}</Text>
+                  <Text style={styles.faqA}>{f.a}</Text>
+                </View>
+              ))}
+              <View style={styles.faqItem}>
+                <Text style={styles.faqQ}>Cần hỗ trợ thêm?</Text>
+                <Text style={styles.faqA}>Email: hotro@phonghoc.example.com</Text>
+                <Text style={styles.faqA}>Hotline: 0900 000 000 (07:00 – 21:00)</Text>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
-
+ 
 function InfoLine({ icon, value }: { icon: any; value: string }) {
   return (
     <View style={styles.infoLine}>
@@ -144,7 +210,7 @@ function InfoLine({ icon, value }: { icon: any; value: string }) {
     </View>
   );
 }
-
+ 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.colors.bg },
   centered: { alignItems: "center", justifyContent: "center", gap: 10 },
@@ -217,4 +283,26 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
   },
   menuLabel: { flex: 1, color: theme.colors.text, fontSize: 13 },
+  modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" },
+  modalSheet: {
+    maxHeight: "80%",
+    backgroundColor: theme.colors.bgAlt,
+    borderTopLeftRadius: theme.radius.lg,
+    borderTopRightRadius: theme.radius.lg,
+    padding: 20,
+    paddingBottom: 28,
+  },
+  modalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
+  modalTitle: { color: theme.colors.text, fontSize: 18, fontWeight: "800" },
+  faqItem: {
+    backgroundColor: theme.colors.card,
+    borderRadius: theme.radius.md,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  faqQ: { color: theme.colors.text, fontSize: 14, fontWeight: "700", marginBottom: 4 },
+  faqA: { color: theme.colors.textMuted, fontSize: 13, lineHeight: 19 },
 });
+ 

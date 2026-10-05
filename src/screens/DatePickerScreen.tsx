@@ -30,10 +30,14 @@ export default function DatePickerScreen({ route, navigation }: Props) {
   const { data: bookedRanges = [], isLoading } = useAvailability(roomId);
   const room = useBookingDraftStore((s) => s.room);
   const setRange = useBookingDraftStore((s) => s.setRange);
+  const draftStart = useBookingDraftStore((s) => s.startDate);
+  const draftEnd = useBookingDraftStore((s) => s.endDate);
+  // Khôi phục khoảng ngày đã chọn trước đó (chỉ khi đúng phòng này)
+  const hasDraft = room?.id === roomId;
 
-  const [month, setMonth] = useState(() => dayjs().startOf("month").format("YYYY-MM-DD"));
-  const [start, setStart] = useState<string | null>(null);
-  const [end, setEnd] = useState<string | null>(null);
+  const [month, setMonth] = useState(() => dayjs(hasDraft && draftStart ? draftStart : undefined).startOf("month").format("YYYY-MM-DD"));
+  const [start, setStart] = useState<string | null>(hasDraft ? draftStart : null);
+  const [end, setEnd] = useState<string | null>(hasDraft ? draftEnd : null);
   const [conflictWarning, setConflictWarning] = useState(false);
 
   const grid = useMemo(() => buildMonthGrid(month), [month]);
@@ -76,7 +80,7 @@ export default function DatePickerScreen({ route, navigation }: Props) {
     <SafeAreaView style={styles.safe} edges={["bottom"]}>
       <View style={styles.header}>
         <Text style={styles.roomName}>{room?.name ?? "Chọn phòng"}</Text>
-        {room && <Text style={styles.roomPrice}>{room.pricePerNight.toLocaleString("vi-VN")}đ / đêm</Text>}
+        {room && <Text style={styles.roomPrice}>{room.pricePerNight.toLocaleString("vi-VN")}đ / ngày</Text>}
       </View>
 
       {isLoading ? (
@@ -155,7 +159,7 @@ export default function DatePickerScreen({ route, navigation }: Props) {
             {conflictWarning && (
               <View style={styles.warningBox}>
                 <Text style={styles.warningText}>
-                  Khoảng ngày này có đêm đã có khách đặt, hãy chọn khoảng ngày không giao với ngày đã kín.
+                  Khoảng ngày này có ngày đã có người đặt, hãy chọn khoảng ngày không giao với ngày đã kín.
                 </Text>
               </View>
             )}
@@ -164,9 +168,9 @@ export default function DatePickerScreen({ route, navigation }: Props) {
           <View style={styles.footer}>
             <View>
               <Text style={styles.footerLabel}>
-                {start && end ? `${start.slice(8)}/${start.slice(5, 7)} - ${end.slice(8)}/${end.slice(5, 7)}` : "Chọn ngày nhận & trả phòng"}
+                {start && end ? `${start.slice(8)}/${start.slice(5, 7)} - ${end.slice(8)}/${end.slice(5, 7)}` : "Chọn ngày bắt đầu & kết thúc"}
               </Text>
-              <Text style={styles.footerNights}>{nights > 0 ? `${nights} đêm` : ""}</Text>
+              <Text style={styles.footerNights}>{nights > 0 ? `${nights} ngày` : ""}</Text>
             </View>
             <PrimaryButton
               title="Tiếp tục"

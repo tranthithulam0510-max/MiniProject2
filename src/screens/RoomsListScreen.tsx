@@ -51,6 +51,12 @@ export default function RoomsListScreen({ navigation, route }: Props) {
     return () => clearTimeout(handle);
   }, [inputValue, setQuery]);
 
+  // Sau khi bộ lọc được khôi phục từ AsyncStorage, đưa từ khóa đã lưu lên ô tìm kiếm.
+  useEffect(() => {
+    const unsub = useFilterStore.persist.onFinishHydration((s) => setInputValue(s.query));
+    return unsub;
+  }, []);
+
   // Search typed on the Home screen: apply immediately.
   const incomingQuery = route.params?.query;
   const incomingNonce = route.params?.nonce;
@@ -100,7 +106,7 @@ export default function RoomsListScreen({ navigation, route }: Props) {
   return (
     <SafeAreaView style={styles.safe} edges={["bottom"]}>
       <View style={styles.header}>
-        <Text style={styles.title}>Chọn phòng</Text>
+        <Text style={styles.title}>Chọn phòng học</Text>
         <Text style={styles.subtitle}>
           {isFetching ? "Đang lọc…" : `${rooms?.length ?? 0} phòng phù hợp`}
         </Text>
@@ -111,7 +117,7 @@ export default function RoomsListScreen({ navigation, route }: Props) {
             <TextInput
               value={inputValue}
               onChangeText={setInputValue}
-              placeholder="Tìm theo tên phòng, địa điểm…"
+              placeholder="Tìm theo tên phòng, tòa nhà…"
               placeholderTextColor={theme.colors.textFaint}
               style={styles.searchInput}
               returnKeyType="search"
@@ -138,10 +144,10 @@ export default function RoomsListScreen({ navigation, route }: Props) {
           showsHorizontalScrollIndicator={false}
           style={{ marginTop: 12 }}
           data={[
-            { key: "guests2", label: "2 khách", active: guests === 2, icon: "people" as const, onPress: () => toggleGuests(2) },
-            { key: "price10", label: "≤ 10tr", active: maxPrice === 10_000_000, icon: "cash" as const, onPress: () => toggleMaxPrice(10_000_000) },
-            { key: "cityview", label: "View thành phố", active: cityViewOnly, icon: "business" as const, onPress: toggleCityView },
-            { key: "pool", label: "Hồ bơi", active: poolOnly, icon: "water" as const, onPress: togglePool },
+            { key: "guests2", label: "4 người", active: guests === 4, icon: "people" as const, onPress: () => toggleGuests(4) },
+            { key: "price10", label: "≤ 150k", active: maxPrice === 150_000, icon: "cash" as const, onPress: () => toggleMaxPrice(150_000) },
+            { key: "cityview", label: "Yên tĩnh", active: cityViewOnly, icon: "volume-mute" as const, onPress: toggleCityView },
+            { key: "pool", label: "Máy chiếu", active: poolOnly, icon: "videocam" as const, onPress: togglePool },
           ]}
           keyExtractor={(c) => c.key}
           renderItem={({ item }) => (
@@ -156,8 +162,8 @@ export default function RoomsListScreen({ navigation, route }: Props) {
             { key: "small", label: "< 30 m²", active: areaRange === "small", icon: "resize" as const, onPress: () => toggleArea("small") },
             { key: "medium", label: "30–50 m²", active: areaRange === "medium", icon: "resize" as const, onPress: () => toggleArea("medium") },
             { key: "large", label: "> 50 m²", active: areaRange === "large", icon: "resize" as const, onPress: () => toggleArea("large") },
-            { key: "available", label: "Available", active: status === "available", icon: "checkmark-circle" as const, onPress: () => toggleStatus("available") },
-            { key: "occupied", label: "Occupied", active: status === "occupied", icon: "close-circle" as const, onPress: () => toggleStatus("occupied") },
+            { key: "available", label: "Còn trống", active: status === "available", icon: "checkmark-circle" as const, onPress: () => toggleStatus("available") },
+            { key: "occupied", label: "Đã kín", active: status === "occupied", icon: "close-circle" as const, onPress: () => toggleStatus("occupied") },
             {
               key: "dates",
               label: startDate && endDate ? `${dayjs(startDate).format("DD/MM")} – ${dayjs(endDate).format("DD/MM")}` : "Chọn ngày",

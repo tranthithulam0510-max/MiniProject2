@@ -9,11 +9,11 @@ import { useFeaturedRooms } from "@/hooks/useRooms";
 import { formatVND } from "@/utils/dateOverlap";
 
 const QUICK_FILTERS = [
-  { icon: "bed", label: "Phòng" },
-  { icon: "diamond", label: "Suite" },
-  { icon: "people", label: "Gia đình" },
-  { icon: "flower", label: "Spa" },
-  { icon: "water", label: "Hồ bơi" },
+  { icon: "book", label: "Phòng học" },
+  { icon: "person", label: "Tự học" },
+  { icon: "people", label: "Học nhóm" },
+  { icon: "videocam", label: "Thuyết trình" },
+  { icon: "volume-mute", label: "Yên tĩnh" },
 ] as const;
 
 export default function HomeScreen() {
@@ -48,14 +48,14 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        <Text style={styles.title}>Kỳ nghỉ trong mơ chỉ cách một chạm</Text>
+        <Text style={styles.title}>Tìm phòng học phù hợp chỉ với một chạm</Text>
 
         <View style={styles.searchBar}>
           <Ionicons name="search" size={16} color={theme.colors.textFaint} />
           <TextInput
             value={search}
             onChangeText={setSearch}
-            placeholder="Bạn muốn đến đâu?"
+            placeholder="Bạn muốn học ở tòa nào?"
             placeholderTextColor={theme.colors.textFaint}
             style={styles.searchInput}
             returnKeyType="search"
@@ -81,8 +81,8 @@ export default function HomeScreen() {
 
         <View style={styles.promo}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.promoTitle}>Spa & hồ bơi</Text>
-            <Text style={styles.promoSub}>Giảm 20% dịch vụ spa hôm nay</Text>
+            <Text style={styles.promoTitle}>Học nhóm cuối tuần</Text>
+            <Text style={styles.promoSub}>Giảm 20% phí thuê phòng học nhóm hôm nay</Text>
             <Pressable style={styles.promoBtn}>
               <Text style={styles.promoBtnText}>Đặt ngay</Text>
             </Pressable>
@@ -105,12 +105,12 @@ export default function HomeScreen() {
                 <View style={[styles.featuredImgWrap, { backgroundColor: room.imageColor }]}>
                   <Image source={{ uri: room.imageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
                   <View style={[styles.statusBadge, { backgroundColor: theme.colors.success }]}>
-                    <Text style={styles.statusText}>Available</Text>
+                    <Text style={styles.statusText}>Còn trống</Text>
                   </View>
                 </View>
                 <Text style={styles.featuredName} numberOfLines={1}>{room.name}</Text>
                 <Text style={styles.featuredMeta} numberOfLines={1}>{room.city} · {room.areaM2} m²</Text>
-                <Text style={styles.featuredPrice}>{formatVND(room.pricePerNight)}/đêm</Text>
+                <Text style={styles.featuredPrice}>{formatVND(room.pricePerNight)}/ngày</Text>
               </Pressable>
             ))}
           </ScrollView>

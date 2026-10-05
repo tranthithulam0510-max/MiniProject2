@@ -25,16 +25,16 @@ export default function RoomsStackNavigator() {
     >
       <Stack.Screen name="RoomsList" component={RoomsListScreen} options={{ title: "Chọn phòng" }} />
       <Stack.Screen name="RoomDetail" component={RoomDetailScreen} options={{ title: "" }} />
-      <Stack.Screen name="DatePicker" component={DatePickerScreen} options={{ title: "Chọn ngày ở" }} />
+      <Stack.Screen name="DatePicker" component={DatePickerScreen} options={{ title: "Chọn ngày học" }} />
       <Stack.Screen
         name="ConfirmBooking"
         component={ConfirmBookingScreen}
-        options={{ title: "Xác nhận đặt phòng" }}
+        options={{ title: "Xác nhận đặt phòng học" }}
       />
       <Stack.Screen
         name="BookingSuccess"
         component={BookingSuccessScreen}
-        options={{ title: "", headerBackVisible: false }}
+        options={{ title: "", headerBackVisible: false, gestureEnabled: false }}
       />
       <Stack.Screen
         name="BookingError"

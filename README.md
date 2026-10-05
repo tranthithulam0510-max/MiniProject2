@@ -1,6 +1,7 @@
-# Mini Project 2 — Ứng dụng đặt phòng
+# Mini Project 2 — Ứng dụng đặt phòng học
 
-Ứng dụng đặt phòng khách sạn viết bằng React Native + Expo (TypeScript, strict mode). Người dùng xem danh sách phòng, tìm kiếm, lọc nhiều tiêu chí, chọn ngày, đặt phòng, xem lại phòng đã đặt và quản lý hồ sơ cá nhân. Dữ liệu được lưu bằng SQLite ngay trên máy.
+Ứng dụng di động cho phép tìm và đặt phòng học (phòng học nhóm, tự học, thảo luận, seminar...) theo ngày.
+Xây dựng bằng React Native + Expo (TypeScript, strict mode).
 
 ## Cài đặt và chạy
 
@@ -9,9 +10,15 @@ npm install
 npx expo start -c
 ```
 
-Yêu cầu Node 18 trở lên. Mở bằng Expo Go (quét mã QR) hoặc máy ảo Android/iOS.
+Yêu cầu Node 18 trở lên. Mở bằng ứng dụng **Expo Go** (quét mã QR) hoặc máy ảo Android/iOS.
 
-Lần chạy đầu tiên, app tự tạo database `roombooking.db` và thêm sẵn 520 phòng mẫu. Muốn xoá sạch dữ liệu để tạo lại, gỡ app khỏi máy (hoặc emulator) rồi chạy lại.
+Nếu điện thoại và máy tính không chung mạng Wi-Fi, chạy bằng tunnel:
+
+```bash
+npx expo start --tunnel
+```
+
+> Ảnh phòng được tải từ internet (link ảnh), nên thiết bị cần có kết nối mạng để hiện ảnh.
 
 ## Công nghệ sử dụng
 
@@ -20,48 +27,93 @@ Lần chạy đầu tiên, app tự tạo database `roombooking.db` và thêm s�
 | Framework | React Native + Expo (managed) |
 | Ngôn ngữ | TypeScript (strict mode) |
 | Điều hướng | React Navigation 7 (bottom tabs + native stack) |
-| Quản lý state | Zustand (phía client) + TanStack Query (dữ liệu từ database) |
-| Cơ sở dữ liệu | SQLite (`expo-sqlite`) |
+| Quản lý trạng thái | Zustand (client) + TanStack Query (dữ liệu từ "server") |
+| Lưu trữ | `expo-sqlite` (dữ liệu phòng, đặt chỗ, tài khoản) + AsyncStorage (phiên đăng nhập, bộ lọc, bản nháp đặt phòng) |
+| Mã hoá mật khẩu | `expo-crypto` (SHA-256 + salt ngẫu nhiên) |
 
-## Chức năng và vị trí trong code
+## Chức năng
 
-| Chức năng | Vị trí |
+| Chức năng | Vị trí trong code |
 |---|---|
-| Cơ sở dữ liệu (bảng users, rooms, bookings và index) | `src/db/database.ts` |
-| Truy vấn phòng, đặt phòng, huỷ phòng, hồ sơ | `src/api/mockApi.ts` (giữ tên file cũ, bên trong chạy trên SQLite) |
-| Tìm kiếm theo từ khoá (gõ không dấu vẫn tìm được) | `src/screens/HomeScreen.tsx`, `src/screens/RoomsListScreen.tsx`, `src/utils/text.ts` |
-| Lọc nhiều tiêu chí: số khách, giá, view thành phố, hồ bơi, diện tích, trạng thái Available/Occupied, khoảng ngày | `src/store/filterStore.ts`, `src/screens/RoomsListScreen.tsx`, `src/components/DateRangeModal.tsx` |
-| Thẻ phòng: ảnh, tên, địa điểm, diện tích, trạng thái Available/Occupied | `src/components/RoomCard.tsx` |
-| Danh sách cuộn mượt (React.memo, getItemLayout, tối ưu FlatList) | `src/components/RoomCard.tsx`, `src/screens/RoomsListScreen.tsx` |
-| Chọn ngày và chặn đặt trùng lịch | `src/screens/DatePickerScreen.tsx`, `src/utils/dateOverlap.ts` |
-| Xác nhận đặt phòng, kiểm tra lại khi bấm "Xác nhận" | `src/screens/ConfirmBookingScreen.tsx`, `src/api/mockApi.ts` |
+| Đăng ký, đăng nhập, đăng xuất, giữ phiên đăng nhập | `src/screens/LoginScreen.tsx`, `RegisterScreen.tsx`, `src/store/authStore.ts`, `src/api/mockApi.ts` (phần Auth) |
+| Tìm kiếm (không phân biệt dấu) + lọc nhiều tiêu chí: số người, giá, yên tĩnh, máy chiếu, diện tích, còn trống/đã kín, khoảng ngày | `src/store/filterStore.ts`, `src/screens/RoomsListScreen.tsx`, `src/components/DateRangeModal.tsx` |
+| Danh sách phòng cuộn mượt (FlatList, 520 phòng mẫu) | `src/components/RoomCard.tsx`, `RoomsListScreen.tsx` |
+| Chọn ngày, chặn ngày đã có người đặt | `src/screens/DatePickerScreen.tsx`, `src/utils/dateOverlap.ts` |
+| Xác nhận đặt phòng, tính tiền (tiền phòng, nước uống, phí dịch vụ) | `src/screens/ConfirmBookingScreen.tsx` |
 | Xử lý hai người đặt cùng lúc | `src/api/mockApi.ts`, `src/hooks/useCreateBooking.ts`, `src/screens/BookingErrorScreen.tsx` |
-| Phòng đã đặt (sắp tới, đã qua, đã huỷ, nút huỷ đặt phòng) | `src/screens/MyBookingsScreen.tsx`, `src/hooks/useCancelBooking.ts` |
-| Hồ sơ cá nhân (xem và sửa tên, email, số điện thoại, thống kê) | `src/screens/ProfileScreen.tsx`, `src/hooks/useProfile.ts` |
-| Điều hướng: 4 tab (Trang chủ, Phòng, Đặt chỗ, Cá nhân) và stack đặt phòng | `src/navigation/RootNavigator.tsx`, `src/navigation/RoomsStackNavigator.tsx` |
+| Đặt chỗ của tôi (sắp tới / đã qua / đã huỷ, nút huỷ) | `src/screens/MyBookingsScreen.tsx` |
+| Hồ sơ cá nhân (xem và sửa tên, email, số điện thoại) | `src/screens/ProfileScreen.tsx` |
+| Trang chủ: tìm kiếm nhanh + phòng nổi bật | `src/screens/HomeScreen.tsx` |
+| Điều hướng 4 tab (Trang chủ, Phòng học, Đặt chỗ, Cá nhân) và stack đặt phòng | `src/navigation/RootNavigator.tsx`, `RoomsStackNavigator.tsx` |
+| Cơ sở dữ liệu SQLite (users, rooms, bookings) | `src/db/database.ts` |
 
-## Cơ sở dữ liệu
+## Quản lý trạng thái và lưu dữ liệu
 
-Có 3 bảng:
+| Dữ liệu | Lưu ở đâu | Còn lại khi |
+|---|---|---|
+| Phiên đăng nhập | Zustand + AsyncStorage (`auth-v1`) | Tắt hẳn app rồi mở lại vẫn đăng nhập, đến khi bấm Đăng xuất |
+| Bộ lọc tìm kiếm | Zustand + AsyncStorage (`filter-store-v1`) | Chuyển trang, chuyển tab, tắt hẳn app rồi mở lại |
+| Bản nháp đặt phòng (phòng, ngày, số người, nước uống) | Zustand + AsyncStorage (`booking-draft-v1`) | Chuyển trang, chuyển tab, tắt hẳn app rồi mở lại |
+| Danh sách phòng, lịch đã đặt, đặt chỗ của tôi | TanStack Query (cache) | Chuyển trang, quay lại không phải tải lại từ đầu |
+| Phòng, booking đã xác nhận, hồ sơ | SQLite (`roombooking.db`) | Luôn còn cho đến khi xoá dữ liệu app |
 
-- `users`: thông tin người dùng (tên, email, số điện thoại, ngày tham gia).
-- `rooms`: 520 phòng (tên, địa điểm, diện tích, giá, số khách, tiện nghi, ảnh).
-- `bookings`: các lượt đặt phòng (phòng, người đặt, ngày nhận, ngày trả, tổng tiền, trạng thái `confirmed` hoặc `cancelled`).
+Quy tắc xử lý:
+- Chọn sang phòng khác thì ngày và số người của phòng cũ bị xoá.
+- Ngày đã chọn mà đã qua thì tự bỏ khi mở lại app.
+- Đặt xong thì bản nháp được xoá và nút Back quay về danh sách phòng (không quay lại bước điền thông tin).
 
-Trạng thái Available/Occupied của phòng **không lưu cố định**. App tính ra từ bảng `bookings` theo khoảng ngày đang lọc (nếu chưa chọn ngày thì tính cho đêm nay). Các index trên diện tích, giá, số khách và ngày đặt giúp việc lọc nhiều tiêu chí chạy nhanh.
+> Dữ liệu SQLite và AsyncStorage nằm **trong điện thoại/máy ảo**, không nằm trong thư mục project. Mỗi thiết bị có một bản dữ liệu riêng.
 
-## Hai người cùng đặt một phòng thì xử lý thế nào?
+## Đăng nhập
 
-Quy tắc là **ai xác nhận trước thì được đặt** (first-commit-wins).
+- Màn hình đầu tiên khi chưa đăng nhập là **Đăng nhập**; có thể chuyển sang **Đăng ký**. Đăng ký xong sẽ tự đăng nhập.
+- **Tài khoản dùng thử:** `thulam@example.com` / mật khẩu `123456`.
+- Mật khẩu **không được lưu dạng gốc**: lưu `salt:hash` (SHA-256 của salt + mật khẩu) trong bảng `users`. Email không phân biệt hoa thường và không được trùng.
+- Mỗi tài khoản có danh sách đặt chỗ và hồ sơ riêng. Đăng xuất ở tab **Cá nhân**; khi đăng xuất, cache dữ liệu và bản nháp đặt phòng của người dùng đó bị xoá.
+- Phiên đăng nhập lưu bằng AsyncStorage (`auth-v1`). Mỗi lần mở app, ứng dụng kiểm tra tài khoản đã lưu còn tồn tại trong database không, nếu không còn thì quay về màn hình đăng nhập.
+- Đây là đăng nhập **cục bộ** (tài khoản nằm trong SQLite của thiết bị), chưa có server xác thực.
 
-Việc kiểm tra trùng ngày và lưu booking nằm trong **một transaction độc quyền** của SQLite (`withExclusiveTransactionAsync`), nên các lần ghi được xếp hàng lần lượt. Người đến sau sẽ thấy booking đã tồn tại và nhận lỗi `BookingConflictError` (mã 409), sau đó được đưa tới màn hình "Đặt phòng không thành công" để chọn lại ngày.
+## Hai người cùng đặt một phòng
 
-Điều kiện trùng lịch là `ngàyNhậnA < ngàyTrảB và ngàyNhậnB < ngàyTrảA`. Vì vậy đặt nối ngày (người này trả phòng đúng hôm người kia nhận phòng) **không** bị coi là trùng.
+Ai xác nhận trước thì được đặt (first-commit-wins). Việc kiểm tra trùng ngày và ghi booking nằm trong một exclusive transaction của SQLite nên các lần ghi được xếp hàng. Người đến sau nhận `BookingConflictError` rồi được đưa tới `BookingErrorScreen`, tại đây có nút "Chọn lại ngày".
 
-## Lưu ý khi chỉnh sửa
+Đặt nối ngày (ngày kết thúc của booking này là ngày bắt đầu của booking khác) không bị coi là trùng.
 
-- Khi sửa dữ liệu mẫu (tên phòng, giá, ảnh...) trong `src/data/mockRooms.ts`, cần tăng `SCHEMA_VERSION` trong `src/db/database.ts` để app tạo lại database. Các booking đã đặt thử sẽ bị xoá.
-- Dữ liệu mẫu dùng bộ sinh số ngẫu nhiên cố định (`mulberry32`) nên mỗi lần seed đều ra cùng một bộ phòng. Danh sách `NAMES` phải giữ đúng 12 tên để dữ liệu không bị lệch.
-- Database nằm riêng trên từng máy, hai điện thoại khác nhau không thấy booking của nhau. Muốn nhiều người dùng chung dữ liệu thật, cần thêm backend (Firebase, Supabase hoặc server riêng).
-- Phí bữa sáng và thuế 8% trong `ConfirmBookingScreen` chỉ mang tính minh hoạ, bạn chỉnh theo yêu cầu đề bài.
-- Chưa cấu hình chạy SQLite trên web, nên hãy thử trên điện thoại hoặc máy ảo.
+## Tuỳ chỉnh dữ liệu
+
+### Đổi ảnh phòng
+
+Mở `src/data/mockRooms.ts`, thêm hoặc sửa link trong `IMAGE_URLS`:
+
+```ts
+const IMAGE_URLS = [
+  "https://i.pinimg.com/....jpg",
+  "https://i.pinimg.com/....jpg",
+];
+```
+
+Link phải là link ảnh trực tiếp (kết thúc bằng `.jpg`/`.png`), không phải link trang web. Các phòng sẽ xoay vòng qua toàn bộ ảnh trong danh sách.
+
+### Đổi tên phòng, vị trí, giá
+
+Cũng trong `src/data/mockRooms.ts`:
+- `NAMES`: tên các loại phòng.
+- `CITIES`: vị trí (tòa nhà, khu). Tên biến giữ là `city` để không phải sửa logic tìm kiếm.
+- `price`: giá mỗi ngày (hiện tại 50.000đ – 300.000đ).
+
+### Tạo lại dữ liệu sau khi sửa
+
+Dữ liệu phòng được lưu vào database ở lần chạy đầu, nên sau khi sửa `mockRooms.ts` cần tạo lại dữ liệu:
+
+1. Mở `src/db/database.ts`, tăng `SCHEMA_VERSION` lên 1 đơn vị.
+2. Chạy lại `npx expo start -c` và mở lại app.
+
+Cách khác: vào Cài đặt điện thoại, chọn Expo Go, bấm **Xoá dữ liệu**. Cả hai cách đều xoá các booking đã đặt thử.
+
+## Ghi chú
+
+- Tên các trường trong code (`city`, `hasCityView`, `hasPool`, `breakfast`...) được giữ nguyên từ bản đầu. Trên giao diện chúng hiển thị lần lượt là vị trí, yên tĩnh, máy chiếu, nước uống.
+- `src/api/mockApi.ts` giữ tên cũ nhưng chạy trên SQLite, đóng vai "server" của ứng dụng.
+- Lịch chọn ngày được viết tay trong `DatePickerScreen.tsx`, không dùng thư viện lịch bên ngoài.
+- Phí nước uống (30.000đ/ngày) và phí dịch vụ (8%) trong `ConfirmBookingScreen.tsx` chỉ mang tính minh hoạ, chỉnh theo yêu cầu đề bài nếu cần.
+- Cảnh báo `baseUrl` trong `tsconfig.json` không ảnh hưởng khi chạy app. Bỏ dòng `baseUrl` và dùng `"@/*": ["./src/*"]` trong `paths` để hết cảnh báo.

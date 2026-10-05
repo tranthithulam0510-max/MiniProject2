@@ -19,3 +19,8 @@ export type TabParamList = {
   BookingsTab: NavigatorScreenParams<BookingsStackParamList>;
   ProfileTab: undefined;
 };
+
+export type AuthStackParamList = {
+  Login: undefined;
+  Register: undefined;
+};

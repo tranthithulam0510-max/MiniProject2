@@ -14,12 +14,12 @@ type Props = NativeStackScreenProps<RoomsStackParamList, "RoomDetail">;
 
 const AMENITY_LABEL: Record<string, { icon: any; label: string }> = {
   wifi: { icon: "wifi", label: "Wi-Fi" },
-  breakfast: { icon: "cafe", label: "Ăn sáng" },
-  balcony: { icon: "sunny", label: "Ban công" },
-  pool: { icon: "water", label: "Hồ bơi" },
+  breakfast: { icon: "cafe", label: "Nước uống" },
+  balcony: { icon: "easel", label: "Bảng trắng" },
+  pool: { icon: "videocam", label: "Máy chiếu" },
   aircon: { icon: "snow", label: "Điều hòa" },
-  smarttv: { icon: "tv", label: "Smart TV" },
-  cityview: { icon: "business", label: "View thành phố" },
+  smarttv: { icon: "flash", label: "Ổ cắm điện" },
+  cityview: { icon: "volume-mute", label: "Yên tĩnh" },
 };
 
 export default function RoomDetailScreen({ route, navigation }: Props) {
@@ -57,7 +57,7 @@ export default function RoomDetailScreen({ route, navigation }: Props) {
             resizeMode="cover"
           />
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>{room.status === "available" ? "Available" : "Occupied"}</Text>
+            <Text style={styles.badgeText}>{room.status === "available" ? "Còn trống" : "Đã kín"}</Text>
           </View>
           <Ionicons
             name="heart"
@@ -86,7 +86,7 @@ export default function RoomDetailScreen({ route, navigation }: Props) {
             </View>
             <View style={styles.amenityChip}>
               <Ionicons name="people" size={14} color={theme.colors.text} />
-              <Text style={styles.amenityText}>{room.guests} khách</Text>
+              <Text style={styles.amenityText}>{room.guests} người</Text>
             </View>
           </View>
           <Text style={styles.desc}>{room.description}</Text>
@@ -107,12 +107,12 @@ export default function RoomDetailScreen({ route, navigation }: Props) {
 
           <View style={styles.timeRow}>
             <View>
-              <Text style={styles.timeLabel}>Nhận phòng</Text>
-              <Text style={styles.timeValue}>từ 14:00</Text>
+              <Text style={styles.timeLabel}>Giờ mở cửa</Text>
+              <Text style={styles.timeValue}>07:00</Text>
             </View>
             <View>
-              <Text style={styles.timeLabel}>Trả phòng</Text>
-              <Text style={styles.timeValue}>trước 12:00</Text>
+              <Text style={styles.timeLabel}>Giờ đóng cửa</Text>
+              <Text style={styles.timeValue}>21:00</Text>
             </View>
           </View>
         </SafeAreaView>
@@ -121,7 +121,7 @@ export default function RoomDetailScreen({ route, navigation }: Props) {
       <View style={styles.footer}>
         <View>
           <Text style={styles.footerLabel}>Từ</Text>
-          <Text style={styles.footerPrice}>{formatVND(room.pricePerNight)}/đêm</Text>
+          <Text style={styles.footerPrice}>{formatVND(room.pricePerNight)}/ngày</Text>
         </View>
         <PrimaryButton
           title="Chọn ngày"

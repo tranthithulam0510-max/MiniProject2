@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { View, Text, StyleSheet, Switch, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -15,8 +15,7 @@ type Props = NativeStackScreenProps<RoomsStackParamList, "ConfirmBooking">;
 
 export default function ConfirmBookingScreen({ route, navigation }: Props) {
   const { roomId } = route.params;
-  const { room, startDate, endDate, guests, setGuests } = useBookingDraftStore();
-  const [breakfast, setBreakfast] = useState(true);
+  const { room, startDate, endDate, guests, setGuests, breakfast, setBreakfast } = useBookingDraftStore();
   const mutation = useCreateBooking();
 
   if (!room || !startDate || !endDate) {
@@ -29,7 +28,7 @@ export default function ConfirmBookingScreen({ route, navigation }: Props) {
 
   const nights = nightsBetween(startDate, endDate);
   const roomTotal = room.pricePerNight * nights;
-  const breakfastFee = breakfast ? 200_000 * nights : 0;
+  const breakfastFee = breakfast ? 30_000 * nights : 0;
   const tax = Math.round((roomTotal + breakfastFee) * 0.08);
   const total = roomTotal + breakfastFee + tax;
 
@@ -46,7 +45,11 @@ export default function ConfirmBookingScreen({ route, navigation }: Props) {
       },
       {
         onSuccess: (booking) => {
-          navigation.replace("BookingSuccess", { bookingId: booking.id });
+          // Làm lại ngăn xếp: [Danh sách phòng, Thành công] -> nút Back không quay lại bước điền thông tin.
+          navigation.reset({
+            index: 1,
+            routes: [{ name: "RoomsList" }, { name: "BookingSuccess", params: { bookingId: booking.id } }],
+          });
         },
         onError: (error) => {
           const message =
@@ -70,21 +73,21 @@ export default function ConfirmBookingScreen({ route, navigation }: Props) {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.roomName}>{room.name}</Text>
-            <Text style={styles.roomSub}>{formatVND(room.pricePerNight)} / đêm</Text>
+            <Text style={styles.roomSub}>{formatVND(room.pricePerNight)} / ngày</Text>
           </View>
         </View>
 
         <View style={styles.infoCard}>
-          <InfoRow icon="log-in" label="Nhận phòng" value={formatDateShort(startDate)} />
-          <InfoRow icon="log-out" label="Trả phòng" value={formatDateShort(endDate)} />
-          <InfoRow icon="moon" label="Thời gian ở" value={`${nights} đêm`} />
+          <InfoRow icon="log-in" label="Ngày bắt đầu" value={formatDateShort(startDate)} />
+          <InfoRow icon="log-out" label="Ngày kết thúc" value={formatDateShort(endDate)} />
+          <InfoRow icon="moon" label="Thời gian sử dụng" value={`${nights} ngày`} />
         </View>
 
         <View style={styles.infoCard}>
           <View style={styles.stepperRow}>
             <View style={styles.stepperLabelWrap}>
               <Ionicons name="people" size={16} color={theme.colors.textMuted} />
-              <Text style={styles.stepperLabel}>Số khách</Text>
+              <Text style={styles.stepperLabel}>Số người</Text>
             </View>
             <View style={styles.stepper}>
               <Text onPress={() => setGuests(Math.max(1, guests - 1))} style={styles.stepperBtn}>
@@ -100,7 +103,7 @@ export default function ConfirmBookingScreen({ route, navigation }: Props) {
           <View style={styles.switchRow}>
             <View style={styles.stepperLabelWrap}>
               <Ionicons name="cafe" size={16} color={theme.colors.textMuted} />
-              <Text style={styles.stepperLabel}>Bữa sáng</Text>
+              <Text style={styles.stepperLabel}>Nước uống</Text>
             </View>
             <Switch
               value={breakfast}
@@ -112,9 +115,9 @@ export default function ConfirmBookingScreen({ route, navigation }: Props) {
         </View>
 
         <View style={styles.infoCard}>
-          <PriceRow label={`Tiền phòng (${nights} đêm)`} value={formatVND(roomTotal)} />
-          {breakfast && <PriceRow label="Bữa sáng" value={formatVND(breakfastFee)} />}
-          <PriceRow label="Thuế & phí" value={formatVND(tax)} />
+          <PriceRow label={`Tiền thuê phòng (${nights} ngày)`} value={formatVND(roomTotal)} />
+          {breakfast && <PriceRow label="Nước uống" value={formatVND(breakfastFee)} />}
+          <PriceRow label="Phí dịch vụ" value={formatVND(tax)} />
           <View style={styles.divider} />
           <PriceRow label="Tổng cộng" value={formatVND(total)} bold />
         </View>

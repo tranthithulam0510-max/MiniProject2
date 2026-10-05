@@ -25,7 +25,7 @@ export default function BookingSuccessScreen({ route, navigation }: Props) {
         <View style={styles.iconCircle}>
           <Ionicons name="checkmark" size={36} color={theme.colors.success} />
         </View>
-        <Text style={styles.title}>Đặt phòng thành công!</Text>
+        <Text style={styles.title}>Đặt phòng học thành công!</Text>
         <Text style={styles.subtitle}>Mã đặt chỗ: {bookingId}</Text>
 
         {room && startDate && endDate && (
@@ -38,7 +38,7 @@ export default function BookingSuccessScreen({ route, navigation }: Props) {
               <Text style={styles.roomMeta}>
                 {formatDateShort(startDate)} - {formatDateShort(endDate)}
               </Text>
-              <Text style={styles.roomPrice}>{formatVND(room.pricePerNight)}/đêm</Text>
+              <Text style={styles.roomPrice}>{formatVND(room.pricePerNight)}/ngày</Text>
             </View>
           </View>
         )}
@@ -47,9 +47,10 @@ export default function BookingSuccessScreen({ route, navigation }: Props) {
       <View style={styles.footer}>
         <PrimaryButton
           title="Xem đặt chỗ của tôi"
-          onPress={() =>
-            navigation.getParent()?.navigate("BookingsTab", { screen: "MyBookings" })
-          }
+          onPress={() => {
+            navigation.popToTop(); // quay tab Phòng về danh sách phòng
+            navigation.getParent()?.navigate("BookingsTab", { screen: "MyBookings" });
+          }}
         />
         <PrimaryButton
           title="Về trang chủ"

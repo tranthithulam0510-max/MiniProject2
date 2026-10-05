@@ -1,5 +1,6 @@
 import dayjs from "dayjs";
-import { CURRENT_USER_ID, getDb } from "@/db/database";
+import { getCurrentUserId, getDb } from "@/db/database";
+import { hashPassword, verifyPassword } from "@/utils/password";
 import {
   AreaRange,
   Booking,
@@ -205,7 +206,7 @@ export async function createBooking(payload: CreateBookingPayload): Promise<Book
       [payload.roomId]
     );
     if (!room) throw new Error("Phòng không tồn tại.");
-    if (payload.guests > room.guests) throw new Error(`Phòng chỉ chứa tối đa ${room.guests} khách.`);
+    if (payload.guests > room.guests) throw new Error(`Phòng chỉ chứa tối đa ${room.guests} người.`);
 
     const clash = await txn.getFirstAsync(
       `SELECT 1 FROM bookings
@@ -220,7 +221,7 @@ export async function createBooking(payload: CreateBookingPayload): Promise<Book
          price_per_night, total, status, created_at)
        VALUES (?,?,?,?,?,?,?,?,'confirmed',?)`,
       [
-        payload.roomId, CURRENT_USER_ID, start, end, payload.guests, payload.nights,
+        payload.roomId, getCurrentUserId(), start, end, payload.guests, payload.nights,
         room.price_per_night, payload.total, createdAt,
       ]
     );
@@ -265,7 +266,7 @@ export async function fetchMyBookings(): Promise<Booking[]> {
      FROM bookings b JOIN rooms r ON r.id = b.room_id
      WHERE b.user_id = ?
      ORDER BY b.start_date DESC`,
-    [CURRENT_USER_ID]
+    [getCurrentUserId()]
   );
 
   const list: Booking[] = rows.map((r) => ({
@@ -293,7 +294,7 @@ export async function cancelBooking(id: string): Promise<void> {
   const res = await db.runAsync(
     `UPDATE bookings SET status = 'cancelled'
      WHERE id = ? AND user_id = ? AND status = 'confirmed' AND end_date >= ?`,
-    [bookingNumber(id), CURRENT_USER_ID, todayISO()]
+    [bookingNumber(id), getCurrentUserId(), todayISO()]
   );
   if (res.changes === 0) throw new Error("Không thể huỷ đặt chỗ này.");
 }
@@ -304,7 +305,7 @@ export async function fetchProfile(): Promise<UserProfile> {
   const db = await getDb();
   const row = await db.getFirstAsync<{
     id: number; name: string; email: string; phone: string; member_since: string;
-  }>("SELECT * FROM users WHERE id = ?", [CURRENT_USER_ID]);
+  }>("SELECT * FROM users WHERE id = ?", [getCurrentUserId()]);
   if (!row) throw new Error("Không tìm thấy hồ sơ.");
   return { id: row.id, name: row.name, email: row.email, phone: row.phone, memberSince: row.member_since };
 }
@@ -318,8 +319,73 @@ export async function updateProfile(
   if (!/^\S+@\S+\.\S+$/.test(email)) throw new Error("Email không hợp lệ.");
 
   const db = await getDb();
+  const taken = await db.getFirstAsync<{ id: number }>(
+    "SELECT id FROM users WHERE email = ? AND id <> ?",
+    [email, getCurrentUserId()]
+  );
+  if (taken) throw new Error("Email này đã được sử dụng.");
   await db.runAsync("UPDATE users SET name = ?, email = ?, phone = ? WHERE id = ?", [
-    name, email, p.phone.trim(), CURRENT_USER_ID,
+    name, email, p.phone.trim(), getCurrentUserId(),
   ]);
   return fetchProfile();
+}
+
+
+// ---- Auth --------------------------------------------------------------------
+
+type UserRow = {
+  id: number; name: string; email: string; phone: string; member_since: string; password: string;
+};
+
+function rowToProfile(row: UserRow): UserProfile {
+  return { id: row.id, name: row.name, email: row.email, phone: row.phone, memberSince: row.member_since };
+}
+
+const EMAIL_RE = /^\S+@\S+\.\S+$/;
+
+/** Đăng nhập bằng email + mật khẩu. Trả về hồ sơ người dùng. */
+export async function loginUser(emailInput: string, password: string): Promise<UserProfile> {
+  const email = emailInput.trim();
+  if (!email || !password) throw new Error("Vui lòng nhập email và mật khẩu.");
+
+  const db = await getDb();
+  const row = await db.getFirstAsync<UserRow>("SELECT * FROM users WHERE email = ?", [email]);
+  // Cùng một thông báo cho "sai email" và "sai mật khẩu".
+  if (!row || !(await verifyPassword(password, row.password))) {
+    throw new Error("Email hoặc mật khẩu không đúng.");
+  }
+  return rowToProfile(row);
+}
+
+/** Đăng ký tài khoản mới (tự đăng nhập sau khi đăng ký). */
+export async function registerUser(p: {
+  name: string; email: string; phone: string; password: string;
+}): Promise<UserProfile> {
+  const name = p.name.trim();
+  const email = p.email.trim();
+  if (!name) throw new Error("Vui lòng nhập họ tên.");
+  if (!EMAIL_RE.test(email)) throw new Error("Email không hợp lệ.");
+  if (p.password.length < 6) throw new Error("Mật khẩu phải có ít nhất 6 ký tự.");
+
+  const db = await getDb();
+  const existed = await db.getFirstAsync<{ id: number }>("SELECT id FROM users WHERE email = ?", [email]);
+  if (existed) throw new Error("Email này đã được đăng ký.");
+
+  const res = await db.runAsync(
+    "INSERT INTO users (name, email, phone, member_since, password) VALUES (?,?,?,?,?)",
+    [name, email, p.phone.trim(), todayISO(), await hashPassword(p.password)]
+  );
+  const row = await db.getFirstAsync<UserRow>("SELECT * FROM users WHERE id = ?", [res.lastInsertRowId]);
+  if (!row) throw new Error("Không tạo được tài khoản, vui lòng thử lại.");
+  return rowToProfile(row);
+}
+
+/** Kiểm tra phiên đã lưu còn hợp lệ không (tài khoản vẫn tồn tại trong database). */
+export async function userExists(id: number): Promise<boolean> {
+  const db = await getDb();
+  const row = await db.getFirstAsync<{ id: number }>(
+    "SELECT id FROM users WHERE id = ? AND password <> ''",
+    [id]
+  );
+  return !!row;
 }

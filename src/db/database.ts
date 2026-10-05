@@ -2,6 +2,7 @@ import * as SQLite from "expo-sqlite";
 import dayjs from "dayjs";
 import { MOCK_ROOMS } from "@/data/mockRooms";
 import { normalizeText } from "@/utils/text";
+import { hashPassword } from "@/utils/password";
 
 /**
  * Local SQLite database (persists between app launches).
@@ -14,10 +15,22 @@ import { normalizeText } from "@/utils/text";
  * bookings table for the date range being looked at.
  */
 
-export const CURRENT_USER_ID = 1;
+const DEMO_USER_ID = 1;
 const OTHER_USER_ID = 2;
+
+/** Người dùng đang đăng nhập (do authStore cập nhật khi đăng nhập / đăng xuất / khôi phục phiên). */
+let currentUserId: number | null = null;
+
+export function setCurrentUserId(id: number | null) {
+  currentUserId = id;
+}
+
+export function getCurrentUserId(): number {
+  if (currentUserId == null) throw new Error("Bạn chưa đăng nhập.");
+  return currentUserId;
+}
 const DB_NAME = "roombooking.db";
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 5;
 
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
@@ -53,9 +66,10 @@ async function createSchema(db: SQLite.SQLiteDatabase) {
     CREATE TABLE users (
       id           INTEGER PRIMARY KEY,
       name         TEXT NOT NULL,
-      email        TEXT NOT NULL,
+      email        TEXT NOT NULL UNIQUE COLLATE NOCASE,
       phone        TEXT NOT NULL DEFAULT '',
-      member_since TEXT NOT NULL
+      member_since TEXT NOT NULL,
+      password     TEXT NOT NULL DEFAULT ''
     );
 
     CREATE TABLE rooms (
@@ -108,15 +122,18 @@ async function createSchema(db: SQLite.SQLiteDatabase) {
 async function seed(db: SQLite.SQLiteDatabase) {
   const today = dayjs();
   const d = (n: number) => today.add(n, "day").format("YYYY-MM-DD");
+  const demoPassword = await hashPassword("123456");
 
   await db.withTransactionAsync(async () => {
+    // Tài khoản demo: thulam@example.com / 123456
     await db.runAsync(
-      "INSERT INTO users (id, name, email, phone, member_since) VALUES (?,?,?,?,?)",
-      [CURRENT_USER_ID, "Thu Lam", "thulam@example.com", "0900 000 000", "2026-01-01"]
+      "INSERT INTO users (id, name, email, phone, member_since, password) VALUES (?,?,?,?,?,?)",
+      [DEMO_USER_ID, "Thu Lam", "thulam@example.com", "0900 000 000", "2026-01-01", demoPassword]
     );
+    // Tài khoản này chỉ để tạo booking mẫu, không đăng nhập được (mật khẩu rỗng).
     await db.runAsync(
-      "INSERT INTO users (id, name, email, phone, member_since) VALUES (?,?,?,?,?)",
-      [OTHER_USER_ID, "Khách khác", "guest@example.com", "", "2026-01-01"]
+      "INSERT INTO users (id, name, email, phone, member_since, password) VALUES (?,?,?,?,?,?)",
+      [OTHER_USER_ID, "Người dùng khác", "guest@example.com", "", "2026-01-01", ""]
     );
 
     const roomStmt = await db.prepareAsync(

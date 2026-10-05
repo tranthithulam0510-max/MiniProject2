@@ -61,7 +61,7 @@ export interface UserProfile {
 export interface FilterState {
   query: string;
   guests: number | null; // e.g. 2
-  maxPrice: number | null; // e.g. 10_000_000
+  maxPrice: number | null; // e.g. 150_000
   cityViewOnly: boolean;
   poolOnly: boolean;
   areaRange: AreaRange | null;

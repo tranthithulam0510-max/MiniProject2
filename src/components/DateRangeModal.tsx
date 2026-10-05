@@ -56,7 +56,7 @@ export default function DateRangeModal({ visible, initialStart, initialEnd, onAp
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={styles.sheet} onPress={() => {}}>
-          <Text style={styles.title}>Lọc theo ngày ở</Text>
+          <Text style={styles.title}>Lọc theo ngày sử dụng</Text>
 
           <View style={styles.monthRow}>
             <Pressable
@@ -100,8 +100,8 @@ export default function DateRangeModal({ visible, initialStart, initialEnd, onAp
 
           <Text style={styles.hint}>
             {start && end
-              ? `${dayjs(start).format("DD/MM")} - ${dayjs(end).format("DD/MM")} · ${dayjs(end).diff(start, "day")} đêm`
-              : "Chọn ngày nhận phòng rồi ngày trả phòng"}
+              ? `${dayjs(start).format("DD/MM")} - ${dayjs(end).format("DD/MM")} · ${dayjs(end).diff(start, "day")} ngày`
+              : "Chọn ngày bắt đầu rồi ngày kết thúc"}
           </Text>
 
           <View style={styles.actions}>

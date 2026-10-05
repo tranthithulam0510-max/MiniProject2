@@ -37,7 +37,7 @@ export default function MyBookingsScreen() {
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <View style={styles.header}>
         <Text style={styles.title}>Đặt chỗ của tôi</Text>
-        <Text style={styles.subtitle}>{upcomingCount} kỳ nghỉ sắp tới</Text>
+        <Text style={styles.subtitle}>{upcomingCount} lịch học sắp tới</Text>
       </View>
 
       {isLoading ? (
@@ -76,7 +76,7 @@ export default function MyBookingsScreen() {
                   </View>
                   <Text style={styles.dates}>
                     {item.city ? `${item.city} · ` : ""}
-                    {formatDateShort(item.range.start)} - {formatDateShort(item.range.end)} · {item.nights} đêm
+                    {formatDateShort(item.range.start)} - {formatDateShort(item.range.end)} · {item.nights} ngày
                   </Text>
                   <View style={styles.bottomRow}>
                     <Text style={styles.total}>{formatVND(item.total)}</Text>

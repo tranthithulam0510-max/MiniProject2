@@ -1,21 +1,22 @@
 import { Room, RoomAmenity } from "@/types/room";
 
 const NAMES = [
-  "Phòng View Thành Phố",
-  "Phòng Hoàng Gia",
-  "Phòng Điều Hành",
-  "Phòng View Trời Sao",
-  "Phòng Ban Công Lớn",
-  "Phòng Hướng Biển",
-  "Biệt Thự Vườn Hoàng Hôn",
-  "Phòng Gác Lửng Toàn Cảnh",
-  "Phòng Gia Đình Xanh",
-  "Phòng Studio Phố Cổ",
-  "Phòng View Cảng",
-  "Bungalow Hồ Bơi Thư Giãn",
+  "Phòng Học Nhóm",
+  "Phòng Tự Học Yên Tĩnh",
+  "Phòng Thảo Luận",
+  "Phòng Seminar",
+  "Phòng Học Đa Phương Tiện",
+  "Phòng Họp Nhỏ",
+  "Phòng Thuyết Trình",
+  "Phòng Máy Tính",
+  "Phòng Ôn Thi",
+  "Phòng Self-study",
+  "Phòng Làm Đồ Án",
+  "Phòng Học Ngôn Ngữ",
 ];
 
-const CITIES = ["Đà Nẵng", "Hà Nội", "Hồ Chí Minh", "Hội An", "Nha Trang", "Đà Lạt"];
+// Vị trí (tòa nhà / khu) - vẫn lưu trong trường `city` để không phải sửa logic tìm kiếm
+const CITIES = ["Tòa A", "Tòa B", "Tòa C", "Thư viện", "Khu D", "Khu E"];
 
 const AMENITY_POOL: RoomAmenity[] = [
   "wifi",
@@ -29,17 +30,23 @@ const AMENITY_POOL: RoomAmenity[] = [
 
 const IMAGE_COLORS = ["#3B4E76", "#4A3B6B", "#2E5A55", "#6B4A3B", "#3B5F6B"];
 
-// Ảnh phòng khách sạn thật, miễn phí bản quyền (Unsplash License)
-const IMAGE_IDS = [
-  "photo-1527530462287-d0438a5819fe",
-  "photo-1631049421450-348ccd7f8949",
-  "photo-1702255489644-392758161f1f",
-  "photo-1680210851458-b7dc5685e06e",
-  "photo-1633836331520-e35c668f1f9d",
+// Ảnh phòng học (link công khai)
+const IMAGE_URLS = [
+  "https://i.pinimg.com/1200x/1c/97/20/1c9720071796dcbe8300080f7c9f2734.jpg",
+  "https://i.pinimg.com/736x/75/38/c7/7538c78074fb6bd7990068398d371a03.jpg",
+  "https://i.pinimg.com/1200x/94/ac/f0/94acf04d57d4ede0bfb9060221ea973f.jpg",
+  "https://i.pinimg.com/736x/71/7f/11/717f11afdcbf5ac78a2226a993245010.jpg",
+  "https://i.pinimg.com/1200x/9b/9c/66/9b9c66ab9d64eec9499c044e115e9dd9.jpg",
+  "https://i.pinimg.com/736x/ba/db/4f/badb4fec5061fbfc55dd3a4cf2c1e8ca.jpg",
+  "https://i.pinimg.com/736x/c8/cc/84/c8cc8427f78002791867cb92554c9683.jpg",
+  "https://i.pinimg.com/736x/6f/01/9e/6f019ecb4b247f60b7e3f5fd2bf3152f.jpg",
+  "https://i.pinimg.com/1200x/d4/ed/07/d4ed0781beaf1b275d1f0bc2854725c8.jpg",
+  "https://i.pinimg.com/1200x/8d/e4/59/8de459f6e3f02655d04f5c9ecc24e044.jpg",
+  "https://i.pinimg.com/736x/4c/bb/2a/4cbb2a6e37269731764f050fbe5fb78b.jpg",
 ];
 
-function roomImageUrl(id: string) {
-  return `https://images.unsplash.com/${id}?w=600&h=450&fit=crop&auto=format&q=70`;
+function roomImageUrl(index: number) {
+  return IMAGE_URLS[index % IMAGE_URLS.length];
 }
 
 function mulberry32(seed: number) {
@@ -68,15 +75,15 @@ function generateRooms(count: number): SeedRoom[] {
     }
     const hasCityView = amenities.has("cityview");
     const hasPool = amenities.has("pool");
-    const guests = [1, 2, 3, 4, 6][Math.floor(rand() * 5)];
-    const price = Math.round((800_000 + rand() * 5_200_000) / 10_000) * 10_000;
+    const guests = [2, 4, 6, 8, 10][Math.floor(rand() * 5)];
+    const price = Math.round((50_000 + rand() * 250_000) / 10_000) * 10_000; // 50k - 300k / ngày
 
     rooms.push({
       id: `room-${i + 1}`,
       name: `${name} #${i + 1}`,
       city,
       // deterministic size (does not touch the PRNG sequence)
-      areaM2: 18 + guests * 8 + ((i * 7) % 15),
+      areaM2: 10 + guests * 4 + ((i * 7) % 10),
       pricePerNight: price,
       rating: Math.round((3.8 + rand() * 1.2) * 10) / 10,
       reviews: Math.floor(20 + rand() * 480),
@@ -86,10 +93,10 @@ function generateRooms(count: number): SeedRoom[] {
       hasCityView,
       hasPool,
       imageColor: IMAGE_COLORS[Math.floor(rand() * IMAGE_COLORS.length)],
-      imageUrl: roomImageUrl(IMAGE_IDS[i % IMAGE_IDS.length]),
+      imageUrl: roomImageUrl(i),
       favorite: rand() > 0.85,
       description:
-        "Không gian hiện đại, view thoáng, đầy đủ tiện nghi cho kỳ nghỉ trong mơ chỉ cách một chạm.",
+        "Phòng học yên tĩnh, đầy đủ bàn ghế, ổ cắm điện và Wi-Fi tốc độ cao, phù hợp học nhóm, thảo luận và ôn thi.",
     });
   }
   return rooms;

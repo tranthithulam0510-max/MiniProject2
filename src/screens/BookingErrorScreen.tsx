@@ -20,7 +20,7 @@ export default function BookingErrorScreen({ route, navigation }: Props) {
         <View style={styles.iconCircle}>
           <Ionicons name="close" size={36} color={theme.colors.danger} />
         </View>
-        <Text style={styles.title}>Đặt phòng không thành công</Text>
+        <Text style={styles.title}>Đặt phòng học không thành công</Text>
         <Text style={styles.message}>{message}</Text>
         <Text style={styles.hint}>
           Điều này xảy ra khi có người khác vừa đặt phòng cho cùng khoảng ngày trong lúc bạn xác
